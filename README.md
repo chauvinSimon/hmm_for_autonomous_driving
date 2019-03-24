@@ -64,7 +64,7 @@ To keep the problem as simple as possible:
 - Time steps are discretized.
 - Lane transitions are ignored: either you are on `left lane` or you are on `right lane`
 
-A word about the Markov Property:
+A word about the **Markov Property**:
 - We just said that it is useful to know the present `lane` (at time `t`) to infer the future `lane` (at time `t+1`)
 - What about the previous `lane` at `t-1`? It probably also hold relevant information?
 - Here is a strong assumption about inferring in this stochastic process:
@@ -86,7 +86,7 @@ A word about the Markov Property:
 # Questions:
 - [Q1](#q1) - How to **derive the probability models**?
 - [Q2](#q2) - If you receive a **single observation**, what are the probability for the car to be in each lane?
-- [Q3](#q3) - What is the **most likely lane sequence** if the **sequence of observations** is [`high speed`, `high speed`, `low speed`, `high speed`]?
+- [Q3](#q3) - What is the **most likely `lane` sequence** if the **sequence of observations** is [`high speed`, `high speed`, `low speed`, `high speed`]?
 - [Q4](#q4) - What if you are **not directly given the probability models**?
 
 # Answers
@@ -102,10 +102,10 @@ The idea is to **approximate the model parameters by counting the occurrences**.
 ### Transition probability
 
 **Counting the number** of transitions gives a likelihoods we can used for our **transition probability** model.
-- For instance, we made 15 transitions starting from `right lane` and among them 2 ended in `left lane`.
-	- Hence the P[`right lane` -> `left lane`] = 
-- Since probabilities must sum to one (normalization), or just by counting for the other case (`right lane` is followed 10 times by a `right lane`)
-	- P[`right lane` -> `right lane`] = 
+- For instance, among the `15` transitions starting from `right lane`, `3` ended in `left lane`.
+	- Hence P[`right lane` -> `left lane`] = `0.2`
+- Since probabilities must sum to one (normalization), or just by counting for the other case (`right lane` is followed `12` times by a `right lane`)
+	- Hence P[`right lane` -> `right lane`] = `0.8`
 
 | ![Derivation of the transition probability model](docs/deriving_transition_model.PNG "Derivation of the transition probability model")  | 
 |:--:| 
@@ -123,20 +123,20 @@ Counting can also be used to determine the **emission probability** model.
 
 ## Prior probability
 
-At any time `t`, what is your guess on the distribution of the hidden state if no information is given?
-- Nothing about previous state and nothing about the observation)
+At any time `t`, what is your guess on the **distribution of the hidden state if no observation is given**?
+- Two options are available:
+	- Either you use the transition model (1) and the fact that probabilities sum to `1` (2):
+		- (1) P[`left lane`, `t`] = P[`left lane` -> `left lane`] `*` P[`left lane`, `t-1`] + P[`right lane` -> `left lane`] `*` P[`right lane`, `t-1`]
+		- (2) P[`right lane`, `t`] = `1` - P[`left lane`, `t`]
+	- Either you simply **count occurrences** in the supplied data:
+		- P[`left lane`, `t`] = `1/3`
+		- P[`right lane`, `t`] = `2/3`
 
-Two options are available:
-- Either you count occurrences
-- Or you use the transition model and the fact that probabilities sum to `1`:
-	- ```p[`left lane`, t] = 0.8 * p[`left lane`, t-1] + 0.2 * p[`right lane`, t-1]```
-	- ```p[`right lane`, t] = 1 - p[`left lane`, t]```
-	
 ### Summary
 
-| ![Hidden Markov Model with the `prior probability` model (up), `transition probability` model (middle), and the `transition probability` model (below)](docs/hmm.PNG "Hidden Markov Model with the `prior probability` model (up), `transition probability` model (middle), and the `transition probability` model (below)")  | 
+| ![Hidden Markov Model with the `prior probability` model (up), `transition probability` model (middle), and the `emission probability` model (below)](docs/hmm.PNG "Hidden Markov Model with the `prior probability` model (up), `transition probability` model (middle), and the `emission probability` model (below)")  | 
 |:--:| 
-| *Hidden Markov Model with the `prior probability` model (up), `transition probability` model (middle), and the `transition probability` model (below)* |
+| *Hidden Markov Model with the `prior probability` model (up), `transition probability` model (middle), and the `emission probability` model (below)* |
 
 ## Q2 - If you receive a single observation, what are the probability for the car to be in each lane?
 
@@ -150,8 +150,10 @@ Before any observation we know that `right lane` appears `2/3` of the time and `
 ### Likelihood
 
 Based on supplied data, we found that on the left lane it is more likely to drive fast. And slow on the right lane.
-- This led to `emission probability`, also understood as `likelihood`: **given a state**, what is the probability for each observation.
-- In the `posterior`, it is the **opposite** that apply: **given an observation**, what is the probability for each state?
+- This led to `emission probability`, also understood as `likelihood`:
+	- **given a state**, what is the probability for each observation.
+- In the `posterior`, it is the **opposite** that apply:
+	- **given an observation**, what is the probability for each state?
 
 ### Marginal
 The Bayes Rule states that `Posterior` = `Normalized (prior * likelihood)`
@@ -161,11 +163,11 @@ The Bayes Rule states that `Posterior` = `Normalized (prior * likelihood)`
 	- P(`high speed`) = P(`high speed` given `left lane`) `*` P(`left lane`) + P(`high speed` given `right lane`) `*` P(`right lane`)
 	- P(`low speed`) = P(`low speed` given `left lane`) `*` P(`left lane`) + P(`low speed` given `right lane`) `*` P(`right lane`)
 - Eventually:
-	- P(`high speed`) = 
-	- P(`low speed`) = 
+	- P(`high speed`) = `1/3`
+	- P(`low speed`) = `2/3`
 
 ### Bayes Rule
-Let's use Bayesian Statistics to recap:
+- Let's use Bayesian Statistics to recap:
 	- P(`lane` given `speed`) = P(`lane`) `*` P(`speed` given `lane`) / P(`speed`)
 	- `Posterior` = `Prior` `*` `Likelihood` / `Marginal`
 - For instance
@@ -176,14 +178,20 @@ Priors:
 - P(`left lane`) = `1/3`
 
 Marginals:
-- P(`high speed`) = `2/3`
-- P(`low speed`) = `1/3`
+- P(`high speed`) = `1/3`
+- P(`low speed`) = `2/3`
 
 Likelihoods:
-- P(`high speed` given `left lane`) = `2/3`
-- P(`high speed` given `right lane`) = `2/3`
-- P(`low speed` given `left lane`) = `2/3`
-- P(`low speed` given `right lane`) = `2/3`
+- P(`high speed` given `left lane`) = `0.6`
+- P(`low speed` given `left lane`) = `0.4`
+- P(`high speed` given `right lane`) = `0.2`
+- P(`low speed` given `right lane`) = `0.8`
+
+Posteriors:
+- P(`left lane` given `high speed`) = `1/3` `*` `0.6` / `1/3` = `0.6`
+- P(`left lane` given `low speed`) = `1/3` `*` `0.4` / `2/3` = `0.2`
+- P(`right lane` given `high speed`) = `2/3` `*` `0.2` / `1/3` = `0.4`
+- P(`right lane` given `low speed`) = `2/3` `*` `0.8` / `2/3` = `0.8`
 
 ### Summary
 
@@ -199,21 +207,21 @@ It is close to our intuition.
 |:--:| 
 | *Derivation of the posterior probabilities for a single observation* |
 
-## Q3 - What is the most likely lane sequence if the sequence of observations is [`high speed`, `high speed`, `low speed`, `high speed`]?
+## Q3 - What is the most likely `lane` sequence if the sequence of observations is [`high speed`, `high speed`, `low speed`, `high speed`]?
 
-The previous observation had `size=1`
-- For each observation we have computed the two posterior probabilities and **select the maximum one**.
+The previous sequence of `observation` had `size=1`
+- For each observation we have computed the two posterior probabilities and then **select the maximum one**.
 - A **similar approach** can be used for larger sequences of observation.
 
 But an issue appears:
 
-| Size of the `observation` sequence | number of terms to compute before applying `max` |
+| Size of the `observation` sequence | Number of posteriors to compute before applying `max()` |
 | :---:        |     :---:      |
-| 1   | 4     |
-| 2     | 8       |
-| 3     | 16       |
-| ...     | ...       |
-| 10     | 1600       |
+| `1`   | `4`     |
+| `2`   | `8`     |
+| `3`   | `16`     |
+| `i`     | `2*2^i`       |
+| `10`     | `2048`       |
 
 ### Dynamic Programming
 
