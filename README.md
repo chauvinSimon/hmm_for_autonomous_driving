@@ -1,6 +1,6 @@
 # hmm_for_autonomous_driving
 
-WORK IN PROGRESS
+WORK IN PROGRESS!!
 
 # Introduction
 Disclaimer:
@@ -88,7 +88,7 @@ A word about the **Markov Property**:
 # Questions:
 - [Q1](#q1) - How to **derive the probability models**?
 - [Q2](#q2) - If you receive a **single observation**, what are the probability for the car to be in each lane?
-- [Q3](#q3) - What is the **most likely `lane` sequence** if the **sequence of observations** is [`high speed`, `high speed`, `low speed`, `high speed`]?
+- [Q3](#q3) - What is the **most likely `lane` sequence** if the **sequence of observations** is [`low speed`, `high speed`, `low speed`]?
 - [Q4](#q4) - What if you are **not directly given the probability models**?
 
 # Answers
@@ -195,10 +195,16 @@ Posteriors:
 - P(`right lane` given `high speed`) = `2/3` `*` `0.2` / `1/3` = `0.4`
 - P(`right lane` given `low speed`) = `2/3` `*` `0.8` / `2/3` = `0.8`
 
+#### Maximum Likelihood Estimation (MLE)
+Finally we will to **pick the sequence (here only one) of hidden states that makes the observations the most likely to happen**.
+
+This is called **Maximum Likelihood Estimation** (MLE).
+
 ### Summary
 
+
 The question was *given an observation, what is the most likely hidden state?*.
-Well, just looking at the numbers on the figure below and taking the `max`, the answer is:
+Well, just looking at the numbers on the figure below and taking the `max()`, the answer is:
 
 - Given `high speed` is observed, the most likely state is `left lane`
 - Given `low speed` is observed, the most likely state is `right lane`
@@ -209,21 +215,43 @@ It is close to our intuition.
 |:--:| 
 | *Derivation of the posterior probabilities for a single observation* |
 
-## Q3 - What is the most likely `lane` sequence if the sequence of observations is [`high speed`, `high speed`, `low speed`, `high speed`]?
+## Q3 - What is the most likely `lane` sequence if the sequence of observations is [`low speed`, `high speed`, `low speed`]?
 
 The previous sequence of `observation` had `size=1`
-- For each observation we have computed the two posterior probabilities and then **select the maximum one**.
-- A **similar approach** can be used for larger sequences of observation.
+- For each observation we have computed the two posterior probabilities and then **select the maximum one** (MLE)
 
+| ![Derivation of the likelihood of the observation for a particular sequence of states](docs/compute_three.PNG "Derivation of the likelihood of the observation for a particular sequence of states")  | 
+|:--:| 
+| *Derivation of the likelihood of the observation for a particular sequence of states* |
+
+The same can be performed for the sequence [`low speed`, `high speed`, `low speed`].
+- First enumerate the `2^3 = 8` possible sequences of hidden states
+- For each candidate, **compute the likelihood of the observations**: how likely is [`low speed`, `high speed`, `low speed`] to happen.
+	- Start by the probability of the first state element to happen (**prior**)
+	- List the **emission** and **transition probabilities**
+	- The likelihood of the observation is the product of all listed probabilities (thank @MarkovProperty)
+- Apply `max()` to get the **Maximum Likelihood Estimate**: [`right lane`, `right lane`, `right lane`]
+
+From all possible 3-observation sequences, what is the probability of getting [`low speed`, `high speed`, `low speed`]?
+- well, it is just the sum of all the likelihoods we have been computing: P([`low speed`, `high speed`, `low speed`]) = `0.1318394`
+
+| ![Derivation of the MLE for a particular sequence of observation](docs/results_three.PNG "Derivation of the MLE for a particular sequence of observation")  | 
+|:--:| 
+| *Derivation of the MLE for a particular sequence of observation* |
+
+
+A **similar approach** can be used for larger sequences of observation.
+
+For three
 But an issue appears:
 
-| Size of the `observation` sequence | Number of posteriors to compute before applying `max()` |
+| Size of the `observation` sequence | Number of posteriors to compute before applying `max()` (for **MLE**) |
 | :---:        |     :---:      |
-| `1`   | `4`     |
-| `2`   | `8`     |
-| `3`   | `16`     |
-| `i`     | `2*2^i`       |
-| `10`     | `2048`       |
+| `1`   | `2`     |
+| `2`   | `4`     |
+| `3`   | `8`     |
+| `i`     | `2^i`       |
+| `10`     | `1024`       |
 
 ### Dynamic Programming
 
