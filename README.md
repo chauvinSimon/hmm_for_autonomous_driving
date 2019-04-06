@@ -22,7 +22,7 @@ For left-hand-drive countries such as the UK, just invert the reasoning :smiley:
 
 - Your car is driving on a **2-lane highway**.
 - Imagine that you can **remotely monitor the velocity of the car (I communicate it to you)**
-- But you do have **no direct access to the lateral position** (`right lane` of `left lane`).
+- But you do have **no direct access to the lateral position** (`right lane` of `left lane`). Formally, you **cannot view the underlying stochastic walk between `lane` states**.
 - How could you deduce the `lane` based on the single information we receive (the `speed`)?
 
 #### Emission probability
@@ -60,9 +60,19 @@ The concept of **`transition probability`** will be used to model this second re
 | *The speed is the `observation` while the lane constitutes the `hidden state`. Some examples show that all `emissions` are possible* |
 
 
-### Objective
+### Objectives
 
-> We want to **infer the lane** (`right` of `left`) of the car (= **hidden state**) based on a **sequence of speed measurements** (= **observation**).
+We can now define two problems which can be solved by an HMM:
+
+- 1- **Training**
+	- The first is **learning the parameters** associated to a given observation sequence
+	- For instance given speeds and their associated lanes, one can learn **the latent structure**.
+
+- 2- **Inference (= Prediction) (= Decoding)**
+	- The second one is applying a trained HMM to an observation sequence, **predicting each state** using the latent structure from the training data learned by the HMM.
+	- Concretly we want to **infer the lane** of the car ((`right` or `left`) = **hidden state**) based on a **sequence of speed measurements** (= **observation**).
+	- In other words, we want to find the sequence of states **that best explains** the new observation sequence.
+	- HMM is used here as a **sequence classifier** (if we make the hidden state of HMM fixed, we will have a **Naive Bayes model**).
 
 ### Assumptions
 To keep the problem as simple as possible:
@@ -70,13 +80,45 @@ To keep the problem as simple as possible:
 - Time steps are discretized.
 - Lane transitions are ignored: either you are on `left lane` or you are on `right lane`.
 
+A word about the **Output Independence**
+- We talked about emission probability, explaining that state `lane (t)` impacts observation `speed (t)`.
+- One could other sources of influence: `speed (t-1)` and `lane (t-1)` for instance. 
+- Here we assume that the **probability of an observation depends only on the state that produced the observation** and not on any other states or any other observations
+- Each observation variable `speed` depends only on the current state `lane`.
+- This is a **strong assumption** since we decide not to capture dependencies between each input element in the observation sequence
+- But it will **relax computation** during decoding.
+- In supervised learning terminology: **"each feature (observation) is conditional independent of every other feature, given the class (hidden state)"**
+- As for Naive Bayes, probabilities are independent given the class `y` and hence can be **"naively"** multiplied: p(`x1,x2,…,x1|y`)`=`p(`x1|y`) `*` p(`x2|y`) `*` ... `*` p(`xm|y`)
+
 A word about the **Markov Property**:
 - We just said that it is useful to know the present `lane` (at time `t`) to infer the future `lane` (at time `t+1`).
 - What about the previous `lane` at `t-1`? It probably also hold relevant information?
 - Here is a strong assumption about inferring in this stochastic process:
 	- the conditional probability distribution of **future states** of the process (conditional on both past and present states) **depends only upon the present state**, not on the sequence of events that preceded it.
 - In other words, **"the future is independant of the past given the present"**.
-- This **strong assumption** is known as the **Markov Property** (also named **"memoryless property"**) and will make computations easier in the following.
+- This **strong assumption** is known as the first-order **Markov Property** (also named **"memoryless property"**) and will make computations easier in the following.
+
+Based on these assumptions, the problem can be modelled using a **graphical model**:
+- The **Markov Property** makes sure state connection occurs only for consecutive states.
+- The **Output Independence** is responsible for each observation to receive only a single edge (coming from the associated state).
+- HMM are **directed models** (hence arrows) since we can distinguish what is the reason (`lane` state) and what is the result (`speed` observation).
+
+| ![HMM Graphical Representation](docs/hmm_graphical_model.PNG "HMM Graphical Representation")  | 
+|:--:| 
+| *HMM Graphical Representation* |
+
+### Relations with other machine learning techniques
+
+- In **Markov Chains**, states are not hidden but completly observable.
+- In **Partially Observable Markov Decision Processes** (POMDP), the user has some control over the transitions between hidden states (introduction of `action`).
+- In **Naive Bayes model**, hidden state are fixed (no sequence since no transition).
+- In **Generative Directed Graphs**, the first-order-chain (linear) structure is generalized to any graph structure (you can impose dependencies to arbitrary elements, not just on the previous element).
+- **Linear-Chain CRF** is the discriminative version of HMM (like Logistic Regression and more generally  Maximum Entropy Models are the discriminate version of Naive Bayes) i.e. the consideration is on the conditional probability p(y|x) instead of the joint probability p(y,x).
+- In **Conditional Random Fields ** (CRF), the two strong (unreasonable) HMM hypotheses are dropped (it better addresses the so-called "labeling bias issue" but also become more complicated for inference).
+- **Maximum Entropy Markov Models** combine features of HMMs (Markov chain connections) and maximum entropy (MaxEnt) models: it is a discriminative (not generative) model that allows the user to specify lots of correlated, but informative features.
+	- MEMMs focus on p（`state|observation`), while HMMs focus on p（`observation|state`）
+	- btw, CRF can be seen as a more advanced MEMM with global variance normalization and with undirected connections, to address the issue of "label bias problem"
+	- HMM models "state decides observation" and this is why it is called "generative". MEMMs model "observation decides state".
 
 # Problem formulation
 
@@ -99,11 +141,14 @@ For HMM:
 
 ## Q1 - How to derive the probability models?
 
-Let assume we are given some data: a observation sequence and states.
+Given some observation `speed` sequence and the associated `lane` states
 - Here are only a few for simplicity but you could imagine longer recordings.
 - You can think of it as some **samples** of the underlying **joint distributions**.
+- How can we estimate the HMM parameters (for the emission, transition and intial state models)?
+- We can count how many times each event occurs in the data and normalize the counts to form proper probability distributions.
+- In can be formalize with **Maximum Likelihood Estimation** in the context of **Supervised Learning**.
 
-The idea is to **approximate the model parameters by counting the occurrences**.
+The idea is to **approximate the model parameters by counting the occurrences**, similar to Naive Baye method where training is mainly done by counting features and classes.
 
 ### Transition probability
 
@@ -120,6 +165,7 @@ The idea is to **approximate the model parameters by counting the occurrences**.
 ### Emission probability
 
 Counting can also be used to determine the **emission probability** model.
+- Similar to Naive Bayes in Supervised Learning where we count occurrences of features for all classes in the training data.
 - For instance, how many times has the hidden state `left lane` caused a `high speed` observation?
 
 | ![Derivation of the emission probability model](docs/deriving_emission_model.PNG "Derivation of the emission probability model")  | 
@@ -133,9 +179,19 @@ At any time `t`, what is your guess on the **distribution of the hidden state if
 	- Either you use the transition model (1) and the fact that probabilities sum to `1` (2):
 		- (1) P[`left lane`, `t`] = P[`left lane` -> `left lane`] `*` P[`left lane`, `t-1`] + P[`right lane` -> `left lane`] `*` P[`right lane`, `t-1`]
 		- (2) P[`right lane`, `t`] = `1` - P[`left lane`, `t`]
-	- Either you simply **count occurrences** in the supplied data:
+	- Either you simply **count occurrences** in the supplied data. We simple count how many samples in the training data fall into each class (here state instance) divided by the total number of samples:
 		- P[`left lane`, `t`] = `1/3`
 		- P[`right lane`, `t`] = `2/3`
+
+## Note: incomplete or missing state/observation
+
+How to cope with **absence of one state or one observation instance in the sampled data**?
+
+- Obviously we would need to collect much more pairs to refine the parameter estimation of our models.
+- Clearly, assigning `0` may cause issues in the inference process.
+- Every state could have a small emission probability of producing an unseen observation
+	- P(`obs` | `state`) = `espilon_for_unseen_case` if `obs` has not been seen.
+- Look for **Laplace smoothing** or **additive smoothing** if you are interested.
 
 ### Summary
 
@@ -278,7 +334,9 @@ If you sum all the probabilities of the eight cases depicted the figure above, y
 - What would sum to `1` is the sum over all possible 3-element observation sequences:
 	- `1` = P[`LLL`] + P[`LLH`] + P[`LHL`] + P[`LHH`] + P[`HLL`] + P[`HLH`] + P[`HHL`] + P[`HHH`]
 
-The presented approach could be used for **larger observation sequences**. But quickly, an issue appears:
+The presented approach could be used for **larger observation sequences**.
+By the way you notice that HMM can **handle inputs of variable length**.
+But for longer observation sequences, an issue appears:
 
 | Size of the `observation` sequence | Number of probabilities to compute before applying `max()` (for **MLE**) |
 | :---:        |     :---:      |
@@ -299,11 +357,76 @@ This example show the intuition of `Dynamic Programming`:
 
 > Compute local blocks and consider only the most promising ones to build the next ones.
 
+Viterbi algorithm
+- first think the HMM in the **trellis representation**
+- then understand that we are interested in finding the best path from the start to the end (**Viterby path**)
+	- "best" meaning the one that maximizes the cumulative probability
+- to achieve that, we should first compute each trellis score (based on our trained emission and transition probability models)
+
+Viterbi algorithm uses the Markov assumption to relax the computation of score of a best path up to position i ending in state t.
+
 pass  # notebook
 
 ## Q5 - What if you are **not directly given the probability models**?
+	
 
-pass
+### Note: Generative VS Discriminative Models
+The approaches used in supervised learning can be categorized into discriminative models or generative models.
+
+Our final goal is to infer a sequence of states (let's refer to this random variable as `Y`) given observation (call it `X`).
+Before this **inference phase** (we just saw how to do it in [Q4](#q4)), we need:
+- 1- to assume some models. We will assume some functional form for P(Y), P(X|Y)
+- 2- to find their parameters (**Training Phase**) as we receive some data (this is **Supervised Learning**)
+
+More precisely, during training:
+- 1- we assume that the observed data are truly sampled from the generative model,
+- 2- then we fit the parameters of the generative model to maximize the data likelihood.
+
+In prediction (inference), given an observation, it computes the predictions for all classes and returns the class most likely to have generated the observation.
+- Similar to Naive Bayes classifier, HMM tries to predict which class generated the new observed example.
+
+Why are HMMs Generative Models?
+
+- 1- During training, the goal is to estimate parameters of **P(`X|Y`)**, **P(`Y`)**
+	- Our model explicitly describes the prior distribution on states, not just the conditional distribution of the observation given the current state
+	- It actually gives a joint distribution on states and outputs
+	- Indeed before seeing any observation, we already have an idea on the `Y` distribution (`P(Y)` is our `initial state probability`)
+	- Discriminative Models do not have any prior. They contemplate the different instances of `Y` and make decision based on P(`Y|X`) they have learnt.
+	- CRFs are discriminative models which model P(y|x). As such, they do not require to explicitly model P(x)
+During inference, we listed all possible instance of Y and select the one that maximizes the **joint probability distribution p(x,y)**.
+
+- 2 - during inference we compute **joint distributions** before making a decision
+	- Generative classifiers are interested in the joint distribution (think of **Naïve Bayes**, **Bayesian networks**,  **Gaussian Mixture Model**, **Markov random fields**)
+		- returns the class that as the maximum posterior probability given the features
+	- While Discriminative classifiers consider either a **conditional distribution** (think of **‌Logistic regression**) or no distribution (think of **SVM**, **perceptron**).
+
+- 3 - Terminology
+	- a [generative model](https://en.wikipedia.org/wiki/Generative_model) can be used to **"generate"** random instances (outcomes):
+		- either of an observation and target (`x`, `y`)
+		- or of an observation `x` given a target value `y`,
+		- One of the advantages of generative algorithms is that you can use p(x,y) to generate new data similar to existing data.
+		- it asks the question: based on my generation assumptions, which category is most likely to generate this signal?
+		- takes the joint probability P(x,y), where x is the input and y is the label, and predicts the most possible known label y in Y for the unknown variable x using Bayes Rules.
+	
+	- while a [discriminative model](https://en.wikipedia.org/wiki/Discriminative_model) or discriminative classifier (without a model) can be used to **"discriminate"** the value of the target variable `Y`, **given an observation `x`**
+		- I give you features `x`, you tell me the most likely class `y`.
+		- A discriminative algorithm does not care about how the data was generated, it simply categorizes a given signal.
+		- They do not need to model the distribution of the observed variables
+		- They make fewer assumptions on the distributions but depend heavily on the quality of the data.
+		- They direct map the given unobserved variable (target) x a class label y depended on the observed variables (training samples)	
+		- They try to learn which features from the training examples are most useful to discriminate between the different possible classes.
+	
+We are trying to find the parameters for multiple probabilities:
+- **Initial state probability**: `P[lane(t)]`. It can be seen as the prior.
+
+- **Emission probability**: `P[speed(t)` given `lane(t)]`
+- **Transition probability**: `P[lane(t+1)` given `lane(t)]`
+
+Generative Learning Algorithms:
+- without any observation, we already know the distribution.
+
+[Here](https://medium.com/@mlengineer/generative-and-discriminative-models-af5637a66a3) is a nice post to get an intuition of Generative an Discriminative models.
+[](http://ai.stanford.edu/~ang/papers/nips01-discriminativegenerative.pdf)
 
 ### EM algorithm
 
@@ -313,4 +436,26 @@ Ideas to go further:
 	- `route` in {`left`, `straight`, `right`} is the hidden variable
 
 # Acknowledgement and references
-I took some inspiration of this [video](https://www.youtube.com/watch?v=kqSzLo9fenk) by Luis Serrano.
+I took some inspiration of
+- a [video](https://www.youtube.com/watch?v=kqSzLo9fenk) by Luis Serrano.
+- a series of three [blog posts](http://www.davidsbatista.net/blog/2017/11/11/HHM_and_Naive_Bayes/) by David Soares Batista.
+
+
+# Draft
+Viterbi finds the best state assignment to the sequence State1 ... StateN as a whole
+Posterior Decoding consists in picking the highest state posterior for each position ii in the sequence independently.
+
+Both HMMs and linear CRFs are typically trained with Maximum Likelihood techniques such as gradient descent, Quasi-Newton methods or for HMMs with Expectation Maximization techniques (Baum-Welch algorithm).
+If the optimization problems are convex, these methods all yield the optimal parameter set.
+
+https://pubweb.eng.utah.edu/~cs6961/papers/klinger-crf-intro.pdf
+
+Label bias problem
+- Only for MEMM.
+- An observation can affect which destination states get the mass, but not how much total mass to pass on
+- This causes a bias toward states with fewer outgoing transitions
+- In the extreme case, a state with a single outgoing transition effectively ignores the observation.
+- Sol: CRFs are globally re-normalized
+
+is a special finite state machine
+most likely path through the HMM or MEMM would be defined as the one that is most likely to generate the observed sequence of tokens. 
