@@ -109,16 +109,21 @@ Based on these assumptions, the problem can be modelled using a **graphical mode
 
 ### Relations with other machine learning techniques
 
+- HMM is a special **Finite State Machine** (FSM)
 - In **Markov Chains**, states are not hidden but completly observable.
 - In **Partially Observable Markov Decision Processes** (POMDP), the user has some control over the transitions between hidden states (introduction of `action`).
 - In **Naive Bayes model**, hidden state are fixed (no sequence since no transition).
-- In **Generative Directed Graphs**, the first-order-chain (linear) structure is generalized to any graph structure (you can impose dependencies to arbitrary elements, not just on the previous element).
+- In **Generative Directed Graphs** (GDG), the first-order-chain (linear) structure is generalized to any graph structure (you can impose dependencies to arbitrary elements, not just on the previous element).
 - **Linear-Chain CRF** is the discriminative version of HMM (like Logistic Regression and more generally  Maximum Entropy Models are the discriminate version of Naive Bayes) i.e. the consideration is on the conditional probability p(y|x) instead of the joint probability p(y,x).
 - In **Conditional Random Fields ** (CRF), the two strong (unreasonable) HMM hypotheses are dropped (it better addresses the so-called "labeling bias issue" but also become more complicated for inference).
 - **Maximum Entropy Markov Models** combine features of HMMs (Markov chain connections) and maximum entropy (MaxEnt) models: it is a discriminative (not generative) model that allows the user to specify lots of correlated, but informative features.
 	- MEMMs focus on p（`state|observation`), while HMMs focus on p（`observation|state`）
 	- btw, CRF can be seen as a more advanced MEMM with global variance normalization and with undirected connections, to address the issue of "label bias problem"
 	- HMM models "state decides observation" and this is why it is called "generative". MEMMs model "observation decides state".
+
+| ![Concepts sharing some properties with HMM](docs/hmm_neighbours.PNG "Concepts sharing some properties with HMM")  | 
+|:--:| 
+| *Concepts sharing some properties with HMM* |
 
 # Problem formulation
 
@@ -457,5 +462,11 @@ Label bias problem
 - In the extreme case, a state with a single outgoing transition effectively ignores the observation.
 - Sol: CRFs are globally re-normalized
 
-is a special finite state machine
 most likely path through the HMM or MEMM would be defined as the one that is most likely to generate the observed sequence of tokens. 
+
+The basic idea is, first, to establish the probability density model of the sample, and then use the model for inference prediction
+The method draws from statistical mechanics and Bayes theory.
+HMM directly models the transition probability and phenotype probability, and calculates the probability of co-occurrence. Thus, it is a generative model.
+
+HMM directly models the transition probability and the phenotype probability, and calculates the probability of co-occurrence.
+It is Bayes Rule that forms the basis of HMM. On the contrary, CRF and MEMM’s based on MaxEnt models over transition and observable features.
