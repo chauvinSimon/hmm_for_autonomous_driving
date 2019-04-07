@@ -161,6 +161,7 @@ A Hidden Markov Model (HMM) is a **5-tuple** composed of:
 - [Q1](#q1) - How to **derive the probability models**?
 - [Q2](#q2) - If you receive a **single speed observation**, what are the probability for the car to be in each lane?
 - [Q3](#q3) - What is the **probability of an observation sequence**? For instance [`low speed`, `high speed`, `low speed`].
+- [Q32](#q32) - Given an **observation sequence**, what is the probability distribution for the **current hidden state**?
 - [Q4](#q4) - What is the **most likely `lane` sequence** if the **observation sequence** is [`low speed`, `high speed`, `low speed`]?
 - [Q5](#q5) - What if you are **not directly given the probability models**?
 
@@ -348,14 +349,57 @@ Each element in the column `t+1` is a weighted sum of the elements at `t`:
 |:--:| 
 | *Construction of the `alpha table` Dynamic Programming* |
 
+Once the `alpha table` is constructed, it is straight forward to get the the **marginal probability** for the associated **observation sequence**:
+- summing the `alpha` values at time `t` gives the probabily of the observation sequence up to time `t`
+- for instance, among the `8` possible 3-observable sequence, [`low speed`, `high speed`, `low speed`] has a probability = `0.13184`
 
-The `alpha table` can be used
-- to determine the belief state (**filtering**)
-- to compute **marginal probability** of an **observation sequence**
-
-| ![Use of the `alpha table` for the **marginal probability** of an **observation sequence**](docs/alpha_table_numbers.gif "Use of the `alpha table` for the **marginal probability** of an **observation sequence**")  | 
+| ![Use of the `alpha table` for the **marginal probability** of an **observation sequence**](docs/alpha_table_marginal.PNG "Use of the `alpha table` for the **marginal probability** of an **observation sequence**")  | 
 |:--:| 
 | *Use of the `alpha table` for the **marginal probability** of an **observation sequence*** |
+
+## Q32 - Given an **observation sequence**, what is the probability distribution for the **current hidden state**?
+
+Filtering is one important application for robotics and **autonomous driving**:
+- We often want to **estimate the current state** of some objects (e.g. _position_, _speed_, or a belief over the _route intention_).
+- In order to **reduce the variance of the estimate**, you may want not to base your estimation only on the latest measurement.
+- Hence, similar to what is done with Bayesian Filters (BFs) (such as **Kalman Filters**, **Particles Filters**), two ingredients are used to update your latest **belief**:
+	- a **sequence of measurements** (= **observation**)
+	- some evolution **models**
+		- for instance odometry measurements and `constant acceleration` or `constant velocity` models in the context of **sensor fusion** for localization
+		- here we have an emission model and a transition model)
+
+The form of the `alpha table` turns out to be very appropriate for **filtering**:
+- Let's focus on P(`lane(t=3)` == `right` given [`low speed`, `high speed`, `low speed`])
+- Express condition probability with the joint probability.
+- Note that we find the **marginal probability of the observation sequence** at the denominator.
+- Marginalize it over the hidden state `lane(t=3)`.
+- All terms left are `alpha` values.
+
+| ![Use of the `alpha table` for **filtering**](docs/alpha_table_filtering.PNG "Use of the `alpha table` for **filtering**")  | 
+|:--:| 
+| *Use of the `alpha table` for **filtering**** |
+
+
+#### Note: Markov Property
+
+> Why do you consider **all the three observations**? Does not the **Markov Property** state that you **only need the latest one**?
+
+Have a look at the graphical representation of the HMM.
+- The Markov Property only applies for the transitions between hidden states.
+- The rule of **D-separation** (commonly used in **Bayesian Networks**) states that the knowledge of the realisation of one previous hidden could have blocked the path from some observations.
+- That would have made our result **conditionally independant** of these observations.
+- For instance, in P(`lane(t=3)` == `right` given [`low speed`, `high speed`, `low speed`] and `lane(t=1)`==`right`), the first observation (at `t=1`) is useless since all its paths to `lane(t=3)` (there is only one path here) are blocked by `lane(t=1)` (which realisation is known).
+- Since we only consider realisations of observation, no simplification can be done.
+
+Actually, when filtering over the last observation only, we get a different result:
+- P(`lane(t=3)` == `right` given [`low speed`, `high speed`, `low speed`]) = 0.73786
+- P(`lane(t=1)` == `right` given [`low speed`]) = 0.8 (also readable in the `alpha table`: `8/10` `/` (`8/10` + `2/10`) )
+
+#### From `alpha table` to `beta table`
+
+The `alpha table` can be used:
+- To determine the belief state (**filtering**).
+- To compute **marginal probability** of an **observation sequence**.
 
 Note that the `alpha table` was completed starting **from left and moving to right**.
 - One could have the idea of going the other way round.
