@@ -339,15 +339,23 @@ An alternative is to use Dynamic Programming.
 |:--:| 
 | *Derivation of the `alpha table`* |
 
+Each element in the column `t+1` is a weighted sum of the elements at `t`:
+- The weights are the transition probabilities
+- The obtained sum is finally scaled by the emission probability (for the state `i` to emit the observation present at `t+1` in our observation sequence)
+	
 
-| ![Construction of the `alpha table`](docs/alpha_table.gif "Construction of the `alpha table`")  | 
+| ![Construction of the `alpha table` using Dynamic Programming](docs/alpha_table.gif "Construction of the `alpha table` Dynamic Programming")  | 
 |:--:| 
-| *Construction of the `alpha table`* |
+| *Construction of the `alpha table` Dynamic Programming* |
 
 
 The `alpha table` can be used
 - to determine the belief state (**filtering**)
 - to compute **marginal probability** of an **observation sequence**
+
+| ![Use of the `alpha table` for the **marginal probability** of an **observation sequence**](docs/alpha_table_numbers.gif "Use of the `alpha table` for the **marginal probability** of an **observation sequence**")  | 
+|:--:| 
+| *Use of the `alpha table` for the **marginal probability** of an **observation sequence*** |
 
 Note that the `alpha table` was completed starting **from left and moving to right**.
 - One could have the idea of going the other way round.
@@ -415,7 +423,7 @@ If you sum all the probabilities of the eight cases depicted the figure above, y
 - Well, `0.1318394` represents the **probability for the observation sequence** [`low speed`, `high speed`, `low speed`] to happen.
 	- P[`low speed`, `high speed`, `low speed`] = P[`obs`] = P[`obs` `&&` `state seq1`] + P[`obs` `&&` `state seq2`] + ... + P[`obs` `&&` `state seq8`]
 	- ?? total probability is with conditional. What is it with intersections?
-	- ?? This confirms the result of [Q5](#q5) ??
+	- We had already find this result in [Q3](#q3)
 - What would sum to `1` is the sum over all possible 3-element observation sequences:
 	- `1` = P[`LLL`] + P[`LLH`] + P[`LHL`] + P[`LHH`] + P[`HLL`] + P[`HLH`] + P[`HHL`] + P[`HHH`]
 
