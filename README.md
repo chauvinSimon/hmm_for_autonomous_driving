@@ -350,18 +350,18 @@ An alternative is to use Dynamic Programming.
 	- 3rd relation: the marginal probability (what we are really looking for) can be expressed with the `alpha`(`i`, `T`) (just by **summing the terms of the last column**).
 	- Therefore it is **computationally-efficient** to fill the `alpha` table to **derive the marginal distribution of observation sequence**.
 
-| ![Derivation of the `alpha table`](docs/alpha_derivation.PNG "Derivation of the `alpha table`")  | 
+| ![Derivation of construction rules for the `alpha table`](docs/alpha_derivation.PNG "Derivation of construction rules for the `alpha table`")  | 
 |:--:| 
-| *Derivation of the `alpha table`* |
+| *Derivation of construction rules for the `alpha table`* |
 
 Each element in the column `t+1` is a weighted sum of the elements at `t`:
 - The weights are the transition probabilities
 - The obtained sum is finally scaled by the emission probability (for the state `i` to emit the observation present at `t+1` in our observation sequence)
 	
 
-| ![Construction of the `alpha table` using Dynamic Programming](docs/alpha_table.gif "Construction of the `alpha table` Dynamic Programming")  | 
+| ![Construction of the `alpha table` using Dynamic Programming](docs/alpha_table.gif "Construction of the `alpha table` using Dynamic Programming")  | 
 |:--:| 
-| *Construction of the `alpha table` Dynamic Programming* |
+| *Construction of the `alpha table` using Dynamic Programming* |
 
 Once the `alpha table` is constructed, it is straight forward to get the the **marginal probability** for the associated **observation sequence**:
 - summing the `alpha` values at time `t` gives the probabily of the observation sequence up to time `t`
@@ -391,7 +391,7 @@ The form of the `alpha table` turns out to be very appropriate for **filtering**
 
 | ![Use of the `alpha table` for **filtering**](docs/alpha_table_filtering.PNG "Use of the `alpha table` for **filtering**")  | 
 |:--:| 
-| *Use of the `alpha table` for **filtering**** |
+| *Use of the `alpha table` for filtering* |
 
 
 #### Note: Markov Property
@@ -420,6 +420,15 @@ Note that the `alpha table` was completed starting **from left and moving to rig
 - One could have the idea of going the other way round.
 - This would lead to the **`beta table`**
 
+| ![Derivation of construction rules for the `beta table`](docs/beta_derivation.PNG "Derivation of construction rules for the `beta table`")  | 
+|:--:| 
+| *Derivation of construction rules for the `beta table`* |
+
+
+| ![Construction of the `beta table` using Dynamic Programming](docs/beta_table.gif "Construction of the `beta table` using Dynamic Programming")  | 
+|:--:| 
+| *Construction of the `beta table` using Dynamic Programming* |
+
 The `beta table` can actually be used to compute the **marginal probability of an observation sequence**:
 - Let's focus on P([`low speed`, `high speed`, `low speed`])
 - Marginalize over the first hidden state `lane(t=1)` (insert it in the joint distribution and sum over all its possible realisations)
@@ -427,10 +436,9 @@ The `beta table` can actually be used to compute the **marginal probability of a
 - The term P(`speed[2 ... t]` given `lane(1)`==`j`) is by definition `beta`(`j`, `t=1`)
 - In other words, the **marginal probability of an observation sequence** can be obtained by summing the terms in the **first columns** of the associated `beta table`.
 
-
 | ![Use of the `beta table` for the **marginal probability** of an **observation sequence**](docs/beta_table_marginal.PNG "Use of the `beta table` for the **marginal probability** of an **observation sequence**")  | 
 |:--:| 
-| *Use of the `^beta table` for the **marginal probability** of an **observation sequence*** |
+| *Use of the `beta table` for the **marginal probability** of an **observation sequence*** |
 
 
 ?? "Marginalize over x" or "Marginalize x"
