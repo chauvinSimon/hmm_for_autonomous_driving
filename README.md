@@ -340,9 +340,9 @@ An alternative is to use Dynamic Programming.
 | *Derivation of the `alpha table`* |
 
 
-| ![`alpha table`](docs/alpha_table.PNG "`alpha table`")  | 
+| ![Construction of the `alpha table`](docs/alpha_table.gif "Construction of the `alpha table`")  | 
 |:--:| 
-| *`alpha table`* |
+| *Construction of the `alpha table`* |
 
 
 The `alpha table` can be used
@@ -528,7 +528,8 @@ Ideas to go further:
 	- `route` in {`left`, `straight`, `right`} is the hidden variable
 
 # Acknowledgement and references
-I took some inspiration of
+I learnt and took some inspiration of
+- a [video series](https://www.youtube.com/playlist?list=PL6Xpj9I5qXYGhsvMWM53ZLfwUInzvYWsm) (in Frence) by Hugo Larochelle.
 - a [video](https://www.youtube.com/watch?v=kqSzLo9fenk) by Luis Serrano.
 - a series of three [blog posts](http://www.davidsbatista.net/blog/2017/11/11/HHM_and_Naive_Bayes/) by David Soares Batista.
 
