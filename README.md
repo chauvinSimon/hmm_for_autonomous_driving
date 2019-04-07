@@ -15,7 +15,11 @@ Addressed topics:
 - Implementation of the **Viterbi Algorithm** to find the most likely sequence of hidden states which could have generated a given observation sequence (**posterior decoding**).
 - Implementation of the **Baum-Welch Algorithm** to find the most likely parameters (state transition and emmission models) of the HMM given a observation sequence (**parameter learning** task).
 
-Given the model parameters, : is Solved by the Viterbi algorithm and **Posterior decoding**.
+?? Given the model parameters, : is Solved by the Viterbi algorithm and **Posterior decoding**.
+
+?? Structure:
+- Problem motivation
+- ... 
 
 # Problem motivation
 For left-hand-drive countries such as the UK, just invert the reasoning :smiley:
@@ -25,7 +29,7 @@ For left-hand-drive countries such as the UK, just invert the reasoning :smiley:
 - But you do have **no direct access to the lateral position** (`right lane` of `left lane`). Formally, you **cannot view the underlying stochastic walk between `lane` states**.
 - How could you deduce the `lane` based on the single information we receive (the `speed`)?
 
-#### Emission probability
+### Emission probability
 
 If I am telling you that I am driving with a `low speed`, you **may deduce** that I am on the right lane.
 - For instance, because I am just driving alone at a reasonable pace
@@ -43,7 +47,7 @@ We get a **first intuition**:
 
 This finding will be modelled using **`emission probabilities`** in the following.
 
-#### Transition probability
+### Transition probability
 
 You could have another intuition:
 - Human drivers usually **stay on their lanes**.
@@ -53,14 +57,14 @@ You could have another intuition:
 
 The concept of **`transition probability`** will be used to model this second remark.
 
-### Terminology
+## Terminology
 
 | ![The speed is the `observation` while the lane constitutes the `hidden state`. Some examples show that all `emissions` are possible](docs/terminology.PNG "The speed is the `observation` while the lane constitutes the `hidden state`. Some examples show that all `emissions` are possible")  | 
 |:--:| 
 | *The speed is the `observation` while the lane constitutes the `hidden state`. Some examples show that all `emissions` are possible* |
 
 
-### Objectives
+## Objectives
 
 We can now define three problems which can be solved by an HMM:
 
@@ -82,24 +86,26 @@ We can now define three problems which can be solved by an HMM:
 	- In this case, you can thing of HMM as a **sequence classifier** (if we make the hidden state of HMM fixed, it would have been a **Naive Bayes classifier**).
 	- Inference is covered in questions [Q2](#q2) and [Q4](#q4)
 	- Three types of inference can be distinguished:
-		- Filtering: determine the latest belief state, i.e. the posterior distribution P(`lane(t)` given [`speed(1)`, ..., `speed(t)`])
-		- Decoding: determine the hidden state sequence, that gives the best explanation for the observation sequence
+		- **Filtering**: determine the latest belief state, i.e. the posterior distribution P(`lane(t)` given [`speed(1)`, ..., `speed(t)`])
+		- **Decoding**: determine the hidden state sequence, that gives the best explanation for the observation sequence
 			- find [`lane(1)`, ..., `lane(t)`] that maximizes P([`lane(1)`, ..., `lane(t)`] given [`speed(1)`, ..., `speed(t)`])
-			- it is **equivalent to maximize the Joint Probability** P([`lane(1)`, ..., `lane(t)`] given [`speed(1)`, ..., `speed(t)`]) since the marginal over observation is independant of the variables we are maximizing over.
-		- Prediction: determine the probability for the future hidden state in K steps, i.e. the posterior conditional distribution P(`lane(t+K)` given [`speed(1)`, ..., `speed(t)`] )
-		- Smooting: determine the probability for the past hidden state K steps ago, i.e. the posterior conditional distribution P(`lane(t-K)` given [`speed(1)`, ..., `speed(t)`] )
+			- it is **equivalent to maximizing the Joint Probability** P([`lane(1)`, ..., `lane(t)`] given [`speed(1)`, ..., `speed(t)`]) since the marginal over observation is independant of the variables we are maximizing over.
+		- **Prediction**: determine the probability for the future hidden state in K steps, i.e. the posterior conditional distribution P(`lane(t+K)` given [`speed(1)`, ..., `speed(t)`] )
+		- **Smooting**: determine the probability for the past hidden state K steps ago, i.e. the posterior conditional distribution P(`lane(t-K)` given [`speed(1)`, ..., `speed(t)`] )
 		
-### Assumptions
+## Assumptions
 To keep the problem as simple as possible:
 - Let's **discretize the speed** into `low speed` and `high speed`.
 - Time steps are discretized.
 - Lane transitions are ignored: either you are on `left lane` or you are on `right lane`.
 
-A word about the **Stationary Process**:
+### Stationary Process
+
 - We assume that the HMM models (transition and emission matrices and initial distribution) are **constant over time**
 - `P[speed(t)` given `lane(t)]`, `P[lane(t+1)` given `lane(t)]` and `P[lane(t)]` are independant of `t`.
 
-A word about the **Observation Independence**
+### Observation Independence
+
 - We talked about emission probability, explaining that state `lane (t)` impacts observation `speed (t)`.
 - One could other sources of influence: `speed (t-1)` and `lane (t-1)` for instance. 
 - Here we assume that the **probability of an observation depends only on the state that produced the observation** and not on any other states or any other observations
@@ -109,7 +115,8 @@ A word about the **Observation Independence**
 - In supervised learning terminology: **"each feature (observation) is conditional independent of every other feature, given the class (hidden state)"**
 - As for Naive Bayes, probabilities are independent given the class `y` and hence can be **"naively"** multiplied: p(`x1,x2,…,x1|y`)`=`p(`x1|y`) `*` p(`x2|y`) `*` ... `*` p(`xm|y`)
 
-A word about the **Markov Property**:
+### First-order Markov Property
+
 - We just said that it is useful to know the present `lane` (at time `t`) to infer the future `lane` (at time `t+1`).
 - What about the previous `lane` at `t-1`? It probably also hold relevant information?
 - Here is a strong assumption about inferring in this stochastic process:
@@ -127,27 +134,32 @@ Based on these assumptions, the problem can be modelled using a **graphical mode
 |:--:| 
 | *HMM Graphical Representation* |
 
-### Relations with other machine learning techniques
+## Relations with other machine learning techniques
 
-- HMM is a special **Finite State Machine** (FSM)
-- In **Markov Chains**, states are not hidden but completly observable.
-- In **Partially Observable Markov Decision Processes** (POMDP), the user has some control over the transitions between hidden states (introduction of `action`).
-- In **Naive Bayes model**, hidden state are fixed (no sequence since no transition).
-- HMM is a special case of **Dynamic Bayes Networks** (DBNs) in which the entire state of the world is represented by a single hidden state variable.
+For better understanding, I find convenient to compare HMMs with the other algorithms and methods I know.
+
+- HMM is a special case of **Finite State Machine** (FSM).
 - **Kalman Filters** can be conceived of as continuous valued HMMs.
-- In **Generative Directed Graphs** (GDG), the first-order-chain (linear) structure is generalized to any graph structure (you can impose dependencies to arbitrary elements, not just on the previous element).
-- **Linear-Chain CRF** is the discriminative version of HMM (like Logistic Regression and more generally  Maximum Entropy Models are the discriminate version of Naive Bayes) i.e. the consideration is on the conditional probability p(y|x) instead of the joint probability p(y,x).
-- In **Conditional Random Fields ** (CRF), the two strong (unreasonable) HMM hypotheses are dropped (it better addresses the so-called "labeling bias issue" but also become more complicated for inference).
+- HMM is a special case of **Dynamic Bayes Networks** (DBNs) in which the entire state of the world is represented by a single hidden state variable.
+- HMM and **Partially Observable Markov Decision Processes** (POMDPs) have many similarities in their formulations. But in POMDPs, the user has some control (not just a spectator) over the process transitions between hidden states (introduction of the concept of `action`).
+- Contrary to HMM, in **Naive Bayes model**, hidden state are fixed (no state sequence since there is no transition happening).
+- States are hidden in HMM. They are fully observable in **Markov Chains**.
+- HMM is a special case of **Generative Directed Graphs** (GDG), where the graphical structure is a first-order-chain structure (one could impose dependencies to arbitrary elements, not just on the previous element).
+- **Linear-Chain CRF** can be seed as the discriminative version of HMM (like Logistic Regression and more generally  Maximum Entropy Models are the discriminate version of Naive Bayes) i.e. the consideration is on the conditional probability p(y|x) instead of the joint probability p(y,x).
+
+- In **Conditional Random Fields** (CRF), the two strong (unreasonable) HMM hypotheses are dropped (it better addresses the so-called "labeling bias issue" but also become more complicated for inference).
 - **Maximum Entropy Markov Models** combine features of HMMs (Markov chain connections) and maximum entropy (MaxEnt) models: it is a discriminative (not generative) model that allows the user to specify lots of correlated, but informative features.
 	- MEMMs focus on p（`state|observation`), while HMMs focus on p（`observation|state`）
 	- btw, CRF can be seen as a more advanced MEMM with global variance normalization and with undirected connections, to address the issue of "label bias problem"
 	- HMM models "state decides observation" and this is why it is called "generative". MEMMs model "observation decides state".
 
-| ![Concepts sharing some properties with HMM](docs/hmm_neighbours.PNG "Concepts sharing some properties with HMM")  | 
+| ![HMMs share concepts with other methods and algorithms](docs/hmm_neighbours.PNG "HMMs share concepts with other methods and algorithms")  | 
 |:--:| 
-| *Concepts sharing some properties with HMM* |
+| *HMMs share concepts with other methods and algorithms* |
 
 # Problem formulation
+
+## Definitions:
 
 A Hidden Markov Model (HMM) is a **5-tuple** composed of:
 
@@ -157,17 +169,17 @@ A Hidden Markov Model (HMM) is a **5-tuple** composed of:
 - A stochastic matrix which gives **Transition probabilities**: `P[lane(t+1)` given `lane(t)]`
 - A **Initial State Probability** distribution: `P[lane(t=t0)]`
 
-# Questions:
-- [Q1](#q1) - How to **derive the probability models**?
-- [Q2](#q2) - If you receive a **single speed observation**, what are the probability for the car to be in each lane?
-- [Q3](#q3) - What is the **probability of an observation sequence**? For instance [`low speed`, `high speed`, `low speed`].
-- [Q32](#q32) - Given an **observation sequence**, what is the probability distribution for the **current hidden state**?
+## Questions:
+- [Q1](#q1) - How to **derive our probability models**?
+- [Q2](#q2) - If you receive a **single `speed` observation**, what is the probability for the car to be in each lane?
+- [Q3](#q3) - What is the probability to observe a particular **sequence of `speed` measurements**? For instance [`low speed`, `high speed`, `low speed`].
+- [Q32](#q32) - Given a **sequence of `speed` measurements**, what is the most likely **latest `lane`**?
 - [Q4](#q4) - What is the **most likely `lane` sequence** if the **observation sequence** is [`low speed`, `high speed`, `low speed`]?
 - [Q5](#q5) - What if you are **not directly given the probability models**?
 
 # Answers
 
-## Q1 - How to derive the probability models?
+## Q1 - How to derive our probability models?
 
 Given some observation `speed` sequence and the associated `lane` states
 - Here are only a few for simplicity but you could imagine longer recordings.
@@ -219,7 +231,7 @@ How to cope with **absence of one state or one observation instance in the sampl
 - Clearly, assigning `0` may cause issues in the inference process.
 - Every state could have a small emission probability of producing an unseen observation
 	- P(`obs` | `state`) = `espilon_for_unseen_case` if `obs` has not been seen.
-- Look for **Laplace smoothing** or **additive smoothing** if you are interested.
+- Look for **"Laplace Smoothing"** or **"Additive Smoothing"** if you are interested.
 
 ### Summary
 
@@ -227,7 +239,7 @@ How to cope with **absence of one state or one observation instance in the sampl
 |:--:| 
 | *Hidden Markov Model with the `initial state probability` model (up), `transition probability` model (middle), and the `emission probability` model (below)* |
 
-## Q2 - If you receive a single observation, what are the probability for the car to be in each lane?
+## Q2 - If you receive a **single `speed` observation**, what is the probability for the car to be in each lane?
 
 ### Prior
 
@@ -301,20 +313,22 @@ It is close to our intuition.
 
 This method is sometimes named **"Posterior Decoding"**.
 
-## Q3 - What is the probability of an observation sequence?
+## Q3 - What is the probability to observe a particular **sequence of `speed` measurements**?
 
-Had it been a first-order Markov Chain:
+Had it been a first-order Markov Chain (no hidden state), one could have marginalized over all `speed(t)` observations and simplify the large expression using the **conditional independance** offered by the Markov Property.
+
+The final expression would be:
 - P([`speed(1)`, ..., `speed(t)`]) = P[`speed(1)`] * SUM ( P([`speed(t)` given `speed(t-1)`]) )
-- using the marginal for the first term
-- then using a transition model
 
-In the HMM case, and considering our assumption, we use the transition model between states and the emission model to generate each observation.
+In the HMM case, we need to add some modifications:
+- We use the **transition model** to navigate between two states.
+- We use the **emission model** to generate each observation.
 
 | ![Derivation of the marginal probability of an observation sequence](docs/marginal_proba_obs_sequence.PNG "Derivation of the probability of an observation sequence")  | 
 |:--:| 
 | *Derivation of the probability of an observation sequence* |
 
-This require to develop all the possible state sequences of size T.
+This requires to develop all the possible state sequences of size T.
 - In our case state space has size `2` (`left_lane`, `right_lane`). Hence the **sum will contain `2^T` terms**.
 - This **naive** (meaning we list all the possibilities based on the **definition of marginal probabilities**) approach can nevertheless **become impractible** for larger state spaces and/or large sequence sizes.
 
@@ -357,12 +371,12 @@ Once the `alpha table` is constructed, it is straight forward to get the the **m
 |:--:| 
 | *Use of the `alpha table` for the **marginal probability** of an **observation sequence*** |
 
-## Q32 - Given an **observation sequence**, what is the probability distribution for the **current hidden state**?
+## Q32 - Given a **sequence of `speed` measurements**, what is the most likely **latest `lane`**?
 
 Filtering is one important application for robotics and **autonomous driving**:
 - We often want to **estimate the current state** of some objects (e.g. _position_, _speed_, or a belief over the _route intention_).
 - In order to **reduce the variance of the estimate**, you may want not to base your estimation only on the latest measurement.
-- Hence, similar to what is done with Bayesian Filters (BFs) (such as **Kalman Filters**, **Particles Filters**), two ingredients are used to update your latest **belief**:
+- Hence, similar to what is done with Bayesian Filters (BFs) (such as **Kalman Filters**, **Particles Filters**), two ingredients are used to update your latest **State Belief**:
 	- a **sequence of measurements** (= **observation**)
 	- some evolution **models**
 		- for instance odometry measurements and `constant acceleration` or `constant velocity` models in the context of **sensor fusion** for localization
@@ -372,7 +386,7 @@ The form of the `alpha table` turns out to be very appropriate for **filtering**
 - Let's focus on P(`lane(t=3)` == `right` given [`low speed`, `high speed`, `low speed`])
 - Express condition probability with the joint probability.
 - Note that we find the **marginal probability of the observation sequence** at the denominator.
-- Marginalize it over the hidden state `lane(t=3)`.
+- Marginalize it over last the hidden state `lane(t=3)`.
 - All terms left are `alpha` values.
 
 | ![Use of the `alpha table` for **filtering**](docs/alpha_table_filtering.PNG "Use of the `alpha table` for **filtering**")  | 
@@ -401,15 +415,30 @@ The `alpha table` can be used:
 - To determine the belief state (**filtering**).
 - To compute **marginal probability** of an **observation sequence**.
 
-Note that the `alpha table` was completed starting **from left and moving to right**.
+Note that the `alpha table` was completed starting **from left and moving to right**
+- This is the reason why this inference method is called **"Forward Algorithm"**
 - One could have the idea of going the other way round.
 - This would lead to the **`beta table`**
 
-The `beta table` can be used
+The `beta table` can actually be used to compute the **marginal probability of an observation sequence**:
+- Let's focus on P([`low speed`, `high speed`, `low speed`])
+- Marginalize over the first hidden state `lane(t=1)` (insert it in the joint distribution and sum over all its possible realisations)
+- Write the decomposition specific to the HMM structure (an **first-order Markov Chain**).
+- The term P(`speed[2 ... t]` given `lane(1)`==`j`) is by definition `beta`(`j`, `t=1`)
+- In other words, the **marginal probability of an observation sequence** can be obtained by summing the terms in the **first columns** of the associated `beta table`.
+
+
+| ![Use of the `beta table` for the **marginal probability** of an **observation sequence**](docs/beta_table_marginal.PNG "Use of the `beta table` for the **marginal probability** of an **observation sequence**")  | 
+|:--:| 
+| *Use of the `^beta table` for the **marginal probability** of an **observation sequence*** |
+
+
+?? "Marginalize over x" or "Marginalize x"
+
 - to smooth an ??? sequence
+The mar
 
-
-## Q4 - What is the most likely `lane` sequence if the observation sequence is [`low speed`, `high speed`, `low speed`]?
+## Q4 - What is the **most likely `lane` sequence** if the **observation sequence** is [`low speed`, `high speed`, `low speed`]?
 
 ### Question interpretation
 
