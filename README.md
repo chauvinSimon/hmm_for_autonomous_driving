@@ -365,7 +365,7 @@ Each element in the column `t+1` is a weighted sum of the elements at `t`:
 
 Once the `alpha table` is constructed, it is straight forward to get the the **marginal probability** for the associated **observation sequence**:
 - summing the `alpha` values at time `t` gives the probabily of the observation sequence up to time `t`
-- for instance, among the `8` possible 3-observable sequence, [`low speed`, `high speed`, `low speed`] has a probability = `0.13184`
+- for instance, among the `8` possible 3-observable sequences, [`low speed`, `high speed`, `low speed`] has a probability = `0.13184`
 
 | ![Use of the `alpha table` for the **marginal probability** of an **observation sequence**](docs/alpha_table_marginal.PNG "Use of the `alpha table` for the **marginal probability** of an **observation sequence**")  | 
 |:--:| 
@@ -394,7 +394,7 @@ The form of the `alpha table` turns out to be very appropriate for **filtering**
 | *Use of the `alpha table` for filtering* |
 
 
-#### Note: Markov Property
+### Note: Markov Property
 
 > Why do you consider **all the three observations**? Does not the **Markov Property** state that you **only need the latest one**?
 
@@ -409,7 +409,7 @@ Actually, when filtering over the last observation only, we get a different resu
 - P(`lane(t=3)` == `right` given [`low speed`, `high speed`, `low speed`]) = 0.73786
 - P(`lane(t=1)` == `right` given [`low speed`]) = 0.8 (also readable in the `alpha table`: `8/10` `/` (`8/10` + `2/10`) )
 
-#### From `alpha table` to `beta table`
+### From `alpha table` to `beta table`
 
 The `alpha table` can be used:
 - To determine the belief state (**filtering**).
@@ -434,17 +434,97 @@ The `beta table` can actually be used to compute the **marginal probability of a
 - Marginalize over the first hidden state `lane(t=1)` (insert it in the joint distribution and sum over all its possible realisations)
 - Write the decomposition specific to the HMM structure (an **first-order Markov Chain**).
 - The term P(`speed[2 ... t]` given `lane(1)`==`j`) is by definition `beta`(`j`, `t=1`)
-- In other words, the **marginal probability of an observation sequence** can be obtained by summing the terms in the **first columns** of the associated `beta table`.
+- In other words, the **marginal probability of an observation sequence** can be obtained from the terms in the **first columns** of the associated `beta table`.
 
 | ![Use of the `beta table` for the **marginal probability** of an **observation sequence**](docs/beta_table_marginal.PNG "Use of the `beta table` for the **marginal probability** of an **observation sequence**")  | 
 |:--:| 
 | *Use of the `beta table` for the **marginal probability** of an **observation sequence*** |
 
 
-?? "Marginalize over x" or "Marginalize x"
+### Smoothing
 
-- to smooth an ??? sequence
-The mar
+**Smooting** is made easy when `alpha table` and `beta table` have been computed for an observation sequence.
+- Let's consider the observation sequence [`low speed` (`t=1`), `high speed` (`t=2`), `low speed` (`t=3`)]
+- What is the **probability distribution for the `lane` at `t=2`?**
+- Note that we can answer the question for `t=3`: cf. **filtering** of [Q32](#q32).
+
+Ideas for the derivation:
+	- the posterior probability is turned to a **joint probability** over all possible hidden states, introducing a `normalization constant`
+	- P(`lane(t=2)` == `left` given [`low speed` (`t=1`), `high speed` (`t=2`), `low speed` (`t=3`)])
+	- the observation sequence is **split at `t=2`**
+	- = P(`lane(t=2)` == `left` and [`low speed` (`t=1`)] and [`high speed` (`t=2`), `low speed` (`t=3`)]) `/` `Normalization_constant`
+	- = P(`lane(t=2)` == `left` and [`low speed` (`t=1`)]) `*` P(`lane(t=2)` == `left` given [`high speed` (`t=2`), `low speed` (`t=3`)]) `/` `Normalization_constant`
+	- Note that [`low speed` (`t=1`)] does not appear in the second term (conditional probability), since given the realisation of `lane(t=2)`, all its paths to [`high speed` (`t=2`), `low speed` (`t=3`)] are "blocked" (**conditional independance**).
+	- = **`alpha`** (`left`, `t=2`) `*` **`beta`**(`left`, `t=2`) `/` **`Normalization_constant`**
+- Since probabilities must sum to one,
+	- `Normalization_constant` = `alpha`(`left`, `t=2`) `*` `beta`(`left`, `t=2`) `+` `alpha`(`right`, `t=2`) `*` `beta`(`right`, `t=2`)
+	- `Normalization_constant` = `14/125` `*` `0.56` `+` `12/125` `*` `0.72` = `0.13184`
+	- This result should be familiar to you ;-)
+- For each time `t`, [SUM over `lane i` of (`alpha`(`i`, `t`) `*` `beta`(`i`, `t`))] represents the probability of observing [`low speed`, `high speed`, `low speed`] among the among the `8` possible 3-observable sequences
+	- For `t=1`: (`2/15`) `*` `0.2592` `+` (`8/15`) `*` `0.1824` = `0.13184`
+	- For `t=2`: (`14/125`) `*` `0.56` `+` (`12/125`) `*` `0.72` = `0.13184`
+	- For `t=3`: (`108/3125`) `*` `1` `+` (`304/3125`) `*` `1` = `0.13184`
+- Answers:
+	- P(`lane(t=2)` == `left` given [`low speed` (`t=1`), `high speed` (`t=2`), `low speed` (`t=3`)]) = (`14/125`) `*` `0.56` `/` `0.13184` = `0.475728`
+	- P(`lane(t=2)` == `right` given [`low speed` (`t=1`), `high speed` (`t=2`), `low speed` (`t=3`)]) = (`12/125`) `*` `0.72` `/` `0.13184` = `0.524272`
+	- ??? Very close result between the two instances of `lane`.
+
+### Prediction
+
+Given an observation sequence, distributions over **future hidden states can be inferred** using a variant of the `alpha table`.
+- Let's consider the observation sequence [`low speed` (`t=1`), `high speed` (`t=2`), `low speed` (`t=3`)]
+- What is the **probability distribution for the `lane` at `t=5`**, i.e. in **two time steps in the future**?
+- Note that we can answer the question for `t=3`: cf. **filtering** of [Q32](#q32).
+- Using Dynamic Programming, we define a new quantity `pi` such as
+	- `pi`(`lane i`, `time k`) = P(`lane` **`(t+k)`** = `i` given [`speed(1)` ... `speed(t)`])
+
+A recursion rule can be derived:
+- `pi`(`lane i`, `time k+1`) = SUM over `state` `j` of [P(`lane(t+k+1)=i` given `lane(t+k)=j`) `*` `pi`(`lane i`, `time k+1`)]
+	- For the derivation, insert `lane(t+k)=j` in the definition of `pi`(`lane i`, `time k+1`).
+	- Since its realisation is not known, we marginalize over `lane(t+k)=j`.
+	- Break the joint part [`lane(t+k+1)=i` and `lane(t+k)=j`] in a conditional.
+	- The expression can be simplified since `lane(t+k+1)=i` is conditionally independant of the observation sequence (`lane(t+k)=j` is blocking )
+
+The initialisation has `k=0`, i.e. it is a filtering problem (inference for the current time):
+- similar to the computation in [Q32](#q32),
+- `pi`(`i`,`0`) = `pi`(`lane i, time t+0`) = P(`lane(t) = i` given [`speed(1)` ... `speed(t)`]) = `alpha(i, t)` / [SUM over j of `alpha(j, t)`]
+
+In other words,
+- Each element of the last columm of the `alpha table` is used to initialize the first column in the `pi table`.
+- Then each element in the `pi table` is a **weighted sum of the elements in the previous column**.
+- Weights are the **transition probabilities**.
+
+| ![Construction of the `alpha table` using Dynamic Programming](docs/pi_table_derivation.PNG "Construction of the `alpha table` using Dynamic Programming")  | 
+|:--:| 
+| *Construction of the `alpha table` using Dynamic Programming* |
+
+| ![Use of the `pi table` for **prediction**](docs/pi_inference.PNG "Use of the `pi table` for **prediction**")  | 
+|:--:| 
+| *Use of the `pi table` for **prediction*** |
+
+Is there a convergence of the `pi` values as `k` grows?
+- Intuitively, it is asking the question: _what will be the hidden state in an infinite number of steps?_
+- It converges to the **initial state distribution**
+- It **forgets about the observation** and **conditional probability becomes a prior probability**
+
+| `k`   | `pi`(`right lane`, `k`) | `pi`(`left lane`, `k`) |
+| :---: | :---:                   |     :---:              |
+| `0`   | `0.8`                   | `0.2`                  |
+| `1`   | `0.72`                  | `0.28`                 |
+| `2`   | `0.688`                 | `0.312`                |
+| `3`   | `0.6752`                | `0.3248`               |
+| `4`   | `0.67008`               | `0.32992`              |
+| `5`   | `668032`                | `0.331968`             |
+| `10`  | `66668065`              | `0.33331935`           |
+| `inf` | `2/3`                   | `1/3`                  |
+
+| ![Change in the **state distribution** as the **prediction horizon** increases](docs/pi_of_k.PNG "Change in the **state distribution** as the **prediction horizon** increases")  | 
+|:--:| 
+| *Change in the **state distribution** as the **prediction horizon** increases* |
+
+Remark:
+- The `pi table` can also be used to **make predictions about the observation**.
+
 
 ## Q4 - What is the **most likely `lane` sequence** if the **observation sequence** is [`low speed`, `high speed`, `low speed`]?
 
@@ -542,7 +622,22 @@ Viterbi algorithm uses the Markov assumption to relax the computation of score o
 pass  # notebook
 
 ## Q5 - What if you are **not directly given the probability models**?
-	
+
+Trellis structure
+? = any path [Sum weighting with transitions and finally emission]
+	- Naive (consider all): 2*T*N^T
+	- B-W: N^2*T
+Viterbi = best path [Max of (weighting with transition) and finally emission]
+	- interested in the best sequence
+	- max over q of P(q|obs, hmm)
+	- if the best path ending in qt=sj, goes via qt-1=si, then it should coincide with best path ending in qt-1=si
+Initialisation, iteration, termination
+Goal: maximise P(Observation given HMM)
+	- resolution of max: dP/dModel = 0
+	- iterative
+	- Baum-Welch
+p(obs | hmm) = Sum over state of P(obs | state=s, hmm) * P(state=s | hmm)
+
 
 ### Note: Generative VS Discriminative Models
 The approaches used in supervised learning can be categorized into discriminative models or generative models.
@@ -618,7 +713,7 @@ Ideas to go further:
 
 # Acknowledgement and references
 I learnt and took some inspiration of
-- a [video series](https://www.youtube.com/playlist?list=PL6Xpj9I5qXYGhsvMWM53ZLfwUInzvYWsm) (in Frence) by Hugo Larochelle.
+- a [video series](https://www.youtube.com/playlist?list=PL6Xpj9I5qXYGhsvMWM53ZLfwUInzvYWsm) (in French) by Hugo Larochelle.
 - a [video](https://www.youtube.com/watch?v=kqSzLo9fenk) by Luis Serrano.
 - a series of three [blog posts](http://www.davidsbatista.net/blog/2017/11/11/HHM_and_Naive_Bayes/) by David Soares Batista.
 
@@ -647,3 +742,5 @@ HMM directly models the transition probability and phenotype probability, and ca
 
 HMM directly models the transition probability and the phenotype probability, and calculates the probability of co-occurrence.
 It is Bayes Rule that forms the basis of HMM. On the contrary, CRF and MEMM’s based on MaxEnt models over transition and observable features.
+
+"Marginalize over x". Not "Marginalize x"
