@@ -332,7 +332,7 @@ This requires to develop all the possible state sequences of size T.
 - In our case state space has size `2` (`left_lane`, `right_lane`). Hence the **sum will contain `2^T` terms**.
 - This **naive** (meaning we list all the possibilities based on the **definition of marginal probabilities**) approach can nevertheless **become impractible** for larger state spaces and/or large sequence sizes.
 
-An alternative is to use Dynamic Programming.
+An alternative is to use **Dynamic Programming**.
 - the idea is to compute cells in a table `alpha`(`i`, `t`)
 	- think of rows (index `i`) as state instances (`left_lane`, `right_lane`)
 	- think of columns (index `t`) as time step (`t`=`1`, `t`=`2`, ... , `t`=`T`)
@@ -476,11 +476,11 @@ Given an observation sequence, distributions over **future hidden states can be 
 - What is the **probability distribution for the `lane` at `t=5`**, i.e. in **two time steps in the future**?
 - Note that we can answer the question for `t=3`: cf. **filtering** of [Q32](#q32).
 - Using Dynamic Programming, we define a new quantity `pi` such as
-	- `pi`(`lane i`, `time k`) = P(`lane` **`(t+k)`** = `i` given [`speed(1)` ... `speed(t)`])
+	- `pi`(`lane i`, `time t+k`) = P(`lane` **`(t+k)`** = `i` given [`speed(1)` ... `speed(t)`])
 
 A recursion rule can be derived:
-- `pi`(`lane i`, `time k+1`) = SUM over `state` `j` of [P(`lane(t+k+1)=i` given `lane(t+k)=j`) `*` `pi`(`lane i`, `time k+1`)]
-	- For the derivation, insert `lane(t+k)=j` in the definition of `pi`(`lane i`, `time k+1`).
+- `pi`(`lane i`, `time t+k+1`) = SUM over `state` `j` of [P(`lane(t+k+1)=i` given `lane(t+k)=j`) `*` `pi`(`lane i`, `time k+1`)]
+	- For the derivation, insert `lane(t+k)=j` in the definition of `pi`(`lane i`, `time t+k+1`).
 	- Since its realisation is not known, we marginalize over `lane(t+k)=j`.
 	- Break the joint part [`lane(t+k+1)=i` and `lane(t+k)=j`] in a conditional.
 	- The expression can be simplified since `lane(t+k+1)=i` is conditionally independant of the observation sequence (`lane(t+k)=j` is blocking )
@@ -494,13 +494,21 @@ In other words,
 - Then each element in the `pi table` is a **weighted sum of the elements in the previous column**.
 - Weights are the **transition probabilities**.
 
-| ![Construction of the `alpha table` using Dynamic Programming](docs/pi_table_derivation.PNG "Construction of the `alpha table` using Dynamic Programming")  | 
+| ![Derivation of construction rules for the `pi table` using Dynamic Programming](docs/pi_table_derivation.PNG "Derivation of construction rules for the `pi table` using Dynamic Programming")  | 
 |:--:| 
-| *Construction of the `alpha table` using Dynamic Programming* |
+| *Derivation of construction rules for the `pi table` using Dynamic Programming* |
+
+| ![Construction of the `pi table` using Dynamic Programming](docs/pi_table.PNG "Construction of the `pi table` using Dynamic Programming")  | 
+|:--:| 
+| *Construction of the `pi table` using Dynamic Programming* |
 
 | ![Use of the `pi table` for **prediction**](docs/pi_inference.PNG "Use of the `pi table` for **prediction**")  | 
 |:--:| 
 | *Use of the `pi table` for **prediction*** |
+
+Answer:
+- P(`lane` = `right` at `t=5` given [`low speed` (`t=1`), `high speed` (`t=2`), `low speed` (`t=3`)]) = `pi`(`right lane`, `k=2`) = `0.688`
+- P(`lane` = `left` at `t=5` given [`low speed` (`t=1`), `high speed` (`t=2`), `low speed` (`t=3`)]) = `pi`(`left lane`, `k=2`) = `0.312`
 
 Is there a convergence of the `pi` values as `k` grows?
 - Intuitively, it is asking the question: _what will be the hidden state in an infinite number of steps?_
@@ -552,6 +560,7 @@ It all depends on what we mean with _"What is the **most likely state sequence**
 - it can be the state sequence that has the **highest conditional probability?** This is was we have done in [Q2](#q2) with `#BayesRule`. `#PosteriorDecoding`.
 - it can be the state sequence that **makes the observation sequence the most likely to happen?** `#MLE`. `#Viterbi`. In this case, we compute the **Joint Probabilities** i.e. the probabilities for the **Intersection** [`State Sequence` `+` `Observation Sequence`].
 - ??(can the MLE be on the conditional probability of observation given state? what differs with the upper joint event is the normalization)??
+- ?? `argmax(A)`(`P`[`A, B`]) = `argmax(A)`(`P`[`A| B`])
 
 In other words, the answer could be maximizing two kind of probability
 
@@ -561,7 +570,7 @@ In other words, the answer could be maximizing two kind of probability
 > For this question, we will be looking for the **most likely sequence of hidden states** which could have generated a **given observation sequence**.
 
 #### Maximum Likelihood Estimation (MLE)
-We will to **pick the sequence (in [Q5](#q5) it was of size `1`) of hidden states that makes the observations the most likely to happen**.
+We will to **pick the sequence (in [Q2](#q2) it was of size `1`) of hidden states that makes the observations the most likely to happen**.
 
 This method is called **Maximum Likelihood Estimation** (MLE).
 
@@ -585,7 +594,7 @@ Here are the different steps performed for the observation sequence [`low speed`
 
 For instance with the state sequence candidate [`low speed`, `high speed`, `low speed`]
 - The **joint probability** is the product of all the probabilities listed on the figure below.
-- P([`low speed`, `high speed`, `low speed`] `&&` [`right lane`, `left lane`, `right lane`]) = `0.02048`
+- P([`low speed`, `high speed`, `low speed`] **and** [`right lane`, `left lane`, `right lane`]) = `0.02048`
 
 | ![Derivation of the MLE for a particular observation sequence](docs/results_three.PNG "Derivation of the MLE for a particular observation sequence")  | 
 |:--:| 
@@ -615,7 +624,7 @@ But for longer observation sequences, an issue appears:
 | `i`     | `2^i`       |
 | `10`     | `1024`       |
 
-### Dynamic Programming
+### Dynamic Programming: an alternative to the naive enumeration
 
 Assume that after the second observation, the sub-sequence (`left lane`, `right lane`) is found to be more likely that the sub-sequence (`right lane`, `right lane`).
 - Is it **worth carry on some investigation** in the branch (`left lane`, `right lane`)?
@@ -670,6 +679,79 @@ Let's count how many times each `fibo_vanilla_recursive(i)` is called when compu
 | ![Repetition in computation with the vanilla Fibonacci recursion](docs/number_calls_fibo_recursive.svg "Repetition in computation with the vanilla Fibonacci recursion")  | 
 |:--:| 
 | *Repetition in computation with the vanilla Fibonacci recursion* |
+
+### Viterbi algorithm: similar to the (`alpha`) Forward Algorithm, with `MAX()` instead of `SUM()`
+
+The problem is a maximization:
+- Find the hidden state sequence [`lane_t=1`, `lane_t=2`, `lane_t=3`] that maximizes the joint probability `P`([`lane_t=1`, `lane_t=2`, `lane_t=3`] and [`low speed` (`t=1`), `high speed` (`t=2`), `low speed` (`t=3`)])
+
+Let's call `L*` the hidden state sequence:
+- `L*` = `argmax_over_L1_L2_L3`(`P`([`lane_t=1`, `lane_t=2`, `lane_t=3`] and [`low speed` (`t=1`), `high speed` (`t=2`), `low speed` (`t=3`)]))
+- The joint probability can be turned to a sum of conditionnal probabilities (simplified using the properties of the HMM structure):
+- `L*` = `argmax_over_L1_L2_L3`(`term_1` `*` `term_2` `*` `term_3`)
+- `L*` = `argmax_over_L3`(`argmax_over_L2`(`argmax_over_L1`(`term_1` `*` `term_2` `*` `term_3`)))
+- with:
+- `term_1` = `P`(`lane_t=1`) `*` `P`( `low speed` (`t=1`) given `lane_t=1`) `*` (`P`(`lane_t=2` given `lane_t=1`)
+- `term_2` = `P`(`high speed` (`t=2`) given `lane_t=2`]) `*` (`P`( `lane_t=3` given `lane_t=2`])
+- `term_3` = `P`(`low speed` (`t=3`) given `lane_t=3`])
+- maximizing over [`lane_t=1`, `lane_t=2`, `lane_t=3`] is equivalent to maximizing over [`lane_t=1`] over [`lane_t=2`] over [`lane_t=3`]
+- therefore let's group the terms that depend on what is maximized:
+- `L*` = `argmax_over_L3`(`term_3` `*` `argmax_over_L2`(`term_2` `*` `argmax_over_L1`(`term_1`)))
+- Now, we can start from the right side, solve the maximization over `lane_t=1` (it does not depend of `lane_t=2`)
+- Then store this result in memory and use it to solve the maximization over `lane_t=2`
+- Finally use the solve the maximization over `lane_t=3`
+- This is the idea of the dynamic programming approach.
+
+Similar to the `alpha`, `beta` and `pi` variables, let's introduce `alpha*(i, t)`:
+- `alpha*(i, t)` = `P`([`low speed` (`t=1`), ..., `___ speed` (`t=t`)] **and** [`lane_t=1`, ..., `lane_t=t-1`] being optimal **and** `lane_t` `=` `i`)
+- It can be noted that `alpha*(i, t)` is similar to `alpha(i, t)`:
+	- Except that `alpha(i, t)` did not have the term _"and_ [`lane_t=1`, ... `lane_t=t-1`] _being_ _optimal"_ 
+	- Instead, `alpha(i, t)` was marginalizing over [`lane_t=1`, ... `lane_t=t-1`]
+	- Here, we fix their value to the optimal sequence for the time [`1`, `t-1`]
+- A recursion rule can be establish:
+	- Using the fact that "lane_t=1`, ..., `lane_t=t`] being optimal" can be written `max_over_j`("[`lane_t=1`, ..., `lane_t=t-1`] being optimal **and** `lane_t=t` `=` `j`")
+		- The value that maximizes this quantity is the optimal value of `lane_t=t` (`t-th` element in `L*`)
+	- Then decompose the joint probability into some conditional probability and simplify using the **conditional independance**:
+	- It yields to: `alpha*(i, t+1)` = `P`( `speed_t+1` given `lane_t+1` `=` `i`]) `*` `P`( `lane_t+1` given `lane_t`]) * `max_over_j`[`alpha*(i, t)`]
+	- Again, similar to the `alpha` construction, except that the elements at `t+1` are constructed using the `max` among elements at `t` instead of summing all elements at `t`.
+	- **It is important, when solving the `max()`, to store the `argmax()`**. It will be used to **construct the best sequence `L*`**.
+- Initialisation:
+	- For `t=1`, there is no `max()` operation
+	- `alpha*(i, t=1)` `=` `P`( `speed_t=1` given `lane_t=1` `=` `i`]) `*` `P`( `lane_t=1` `=` `i`)
+	- Therefore `alpha*(i, t=1)` == `alpha(i, t=1)`
+- Inferrence: how to find the elements of `L*`?
+	- `argmax()` in the **last column** will give the optimal value of `lane_t=t` (**last element in** `L*`)
+	- then remember the previous `argmax()` used to build the table.
+
+| ![Construction of the `alpha* table` using Dynamic Programming](docs/alpha_star_table.gif "Construction of the `alpha* table` using Dynamic Programming")  | 
+|:--:| 
+| *Construction of the `alpha\* table` using Dynamic Programming* |
+
+Applying **`max()` in the last column** gives the **joint probability for the most probable state sequence**:
+- `0.0546` = P([`low speed`, `high speed`, `low speed`] **and** [`right lane`, `right lane`, `right lane`])
+- This result has also been found in the "naive approach" above.
+
+| ![Use of the `alpha* table` for the **decoding** of an observation sequence](docs/alpha_star_table_decoding.gif "Use of the `alpha* table` for the **decoding** of an observation sequence")  | 
+|:--:| 
+| *Use of the `alpha\* table` for the **marginal probability** of an **observation sequence*** |
+
+
+Decoding only requires only two types of information:
+- the `alpha*` value in the last column
+- the transitions followed between column when building the table (i.e. the `argmax`)
+
+In other words, the `alpha*` values in the non-last columns are useless:
+- no `argmax` operation is performed to construct the optimal sequence from the table, except for the last column.
+- **it could well be the case that `alpha\*`(`left_lane`, `t=2`) > `alpha\*`(`right_lane`, `t=2`)**, while `alpha*`(`left_lane`, `t=2`) still remains the `argmax` when building column `t=3`
+- it this case, **`alpha\*`(`right_lane`, `t=2`) would still be chosen** since it is located on the optimal path.
+
+Answer:
+- [`right_lane`, `right_lane`, `right_lane`] is the **most likely `lane` sequence** if the **observation sequence** is [`low speed`, `high speed`, `low speed`]
+- this has been found using 
+
+
+
+
 
 Viterbi algorithm
 - first think the HMM in the **trellis representation**
