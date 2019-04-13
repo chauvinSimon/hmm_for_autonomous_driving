@@ -611,6 +611,12 @@ This example show the intuition of `Dynamic Programming`:
 
 > Compute local blocks and consider only the most promising ones to build the next ones.
 
+#### Dynamic Programming is nothing but cached recursion
+
+| ![Repetition in computation with the vanilla Fibonacci recursion](docs/number_calls_fibo_recursive.svg "Repetition in computation with the vanilla Fibonacci recursion")  | 
+|:--:| 
+| *Repetition in computation with the vanilla Fibonacci recursion* |
+
 Viterbi algorithm
 - first think the HMM in the **trellis representation**
 - then understand that we are interested in finding the best path from the start to the end (**Viterby path**)
