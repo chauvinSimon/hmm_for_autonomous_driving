@@ -507,6 +507,21 @@ Is there a convergence of the `pi` values as `k` grows?
 - It converges to the **initial state distribution**
 - It **forgets about the observation** and **conditional probability becomes a prior probability**
 
+[`pi_table.ipynb`](pi_table.ipynb) computes the `pi(k)` values associated to this observation sequence for any time step `t+k`.
+
+```python
+import numpy as np
+# 0 = left
+# 1 = right
+pi_zero = np.array([0.8, 0.2])  # deduced from the `alpha_table`
+transition = np.array([[0.8, 0.4], [0.2, 0.6]])
+
+def pi(k):
+    if k == 0:
+        return pi_zero
+    return np.dot(transition, pi(k-1))
+```
+
 | `k`   | `pi`(`right lane`, `k`) | `pi`(`left lane`, `k`) |
 | :---: | :---:                   |     :---:              |
 | `0`   | `0.8`                   | `0.2`                  |
@@ -518,7 +533,7 @@ Is there a convergence of the `pi` values as `k` grows?
 | `10`  | `66668065`              | `0.33331935`           |
 | `inf` | `2/3`                   | `1/3`                  |
 
-| ![Change in the **state distribution** as the **prediction horizon** increases](docs/pi_of_k.PNG "Change in the **state distribution** as the **prediction horizon** increases")  | 
+| ![Change in the **state distribution** as the **prediction horizon** increases](docs/pi_of_k.svg "Change in the **state distribution** as the **prediction horizon** increases")  | 
 |:--:| 
 | *Change in the **state distribution** as the **prediction horizon** increases* |
 
@@ -612,6 +627,45 @@ This example show the intuition of `Dynamic Programming`:
 > Compute local blocks and consider only the most promising ones to build the next ones.
 
 #### Dynamic Programming is nothing but cached recursion
+
+To better understand the concept of **Dynamic Programming and its benefits**, [`cached_vs_vanilla_recursion.ipynb`](cached_vs_vanilla_recursion.ipynb) compares the performance of two recursive approches on the famous Fibonacci computation.
+
+The first one implements **"classic recursion"**:
+
+```python
+def fibo_vanilla_recursive(i):
+    if i <= 0:
+        return 0
+    elif i == 1:
+        return 1
+    else:
+        return fibo_vanilla_recursive(i-1) + fibo_vanilla_recursive(i-2)
+
+%timeit for _ in range(10): fibo_vanilla_recursive(10)
+```
+
+```237 µs ± 14.3 µs per loop (mean ± std. dev. of 7 runs, 1000 loops each)```
+
+In the second one reuses previous results in the computation, i.e. a **"cached recursion"**:
+
+```python
+cache = {0:0, 1:1}
+def fibo_cached_recursive(i):
+    if cache.get(i) is not None:
+        return cache[i]
+    else:
+        res = fibo_cached_recursive(i-1) + fibo_cached_recursive(i-2)
+        cache[i] = res
+        return res
+
+%timeit for _ in range(10): fibo_cached_recursive(10)
+```
+
+```2.33 µs ± 140 ns per loop (mean ± std. dev. of 7 runs, 100000 loops each)```
+
+The **difference** in the **computational time** is substantial (all the more since it only goes to `10`!).
+
+Let's count how many times each `fibo_vanilla_recursive(i)` is called when computing all `fibo_vanilla_recursive(k)` for `k` in `range(10)`.
 
 | ![Repetition in computation with the vanilla Fibonacci recursion](docs/number_calls_fibo_recursive.svg "Repetition in computation with the vanilla Fibonacci recursion")  | 
 |:--:| 
