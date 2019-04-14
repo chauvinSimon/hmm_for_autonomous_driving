@@ -682,68 +682,75 @@ Let's count how many times each `fibo_vanilla_recursive(i)` is called when compu
 
 ### Viterbi algorithm: similar to the (`alpha`) Forward Algorithm, with `MAX()` instead of `SUM()`
 
-The problem is a maximization:
-- Find the hidden state sequence [`lane_t=1`, `lane_t=2`, `lane_t=3`] that maximizes the joint probability `P`([`lane_t=1`, `lane_t=2`, `lane_t=3`] and [`low speed` (`t=1`), `high speed` (`t=2`), `low speed` (`t=3`)])
+This is a maximization problem:
+- The goal is to **find the hidden state sequence** [`lane_t=1`, `lane_t=2`, `lane_t=3`] that **maximizes the joint probability** `P`([`lane_t=1`, `lane_t=2`, `lane_t=3`] and [`low speed` (`t=1`), `high speed` (`t=2`), `low speed` (`t=3`)])
 
-Let's call `L*` the hidden state sequence:
-- `L*` = `argmax_over_L1_L2_L3`(`P`([`lane_t=1`, `lane_t=2`, `lane_t=3`] and [`low speed` (`t=1`), `high speed` (`t=2`), `low speed` (`t=3`)]))
-- The joint probability can be turned to a sum of conditionnal probabilities (simplified using the properties of the HMM structure):
+Let's call **`L\*`** the **optimal hidden state sequence**, and let's note `L1` = `lane_t=1`, `L2` = `lane_t=2` and `L3` = `lane_t=3`:
+- `L*` = `argmax_over_L1_L2_L3`(`P`([`L1`, `L2`, `L3`] and [`low speed` (`t=1`), `high speed` (`t=2`), `low speed` (`t=3`)]))
+- This **joint probability** can be turned to a **sum of conditionnal probabilities**:
 - `L*` = `argmax_over_L1_L2_L3`(`term_1` `*` `term_2` `*` `term_3`)
 - `L*` = `argmax_over_L3`(`argmax_over_L2`(`argmax_over_L1`(`term_1` `*` `term_2` `*` `term_3`)))
-- with:
-- `term_1` = `P`(`lane_t=1`) `*` `P`( `low speed` (`t=1`) given `lane_t=1`) `*` (`P`(`lane_t=2` given `lane_t=1`)
-- `term_2` = `P`(`high speed` (`t=2`) given `lane_t=2`]) `*` (`P`( `lane_t=3` given `lane_t=2`])
-- `term_3` = `P`(`low speed` (`t=3`) given `lane_t=3`])
-- maximizing over [`lane_t=1`, `lane_t=2`, `lane_t=3`] is equivalent to maximizing over [`lane_t=1`] over [`lane_t=2`] over [`lane_t=3`]
-- therefore let's group the terms that depend on what is maximized:
+- With (simplified using the conditional independance of the HMM structure):
+- `term_1` = `P`(`L1`) `*` `P`(`low speed` (`t=1`) given `L1`) `*` (`P`(`L2` given `L1`)
+- `term_2` = `P`(`high speed` (`t=2`) given `L2`]) `*` (`P`(`L3` given `L2`])
+- `term_3` = `P`(`low speed` (`t=3`) given `L3`])
+- Maximizing over [`L1`, `L2`, `L3`] is equivalent to maximizing over [`L1`] over [`L2`] over [`L3`]
+- Therefore let's group the terms that depend on what is maximized:
 - `L*` = `argmax_over_L3`(`term_3` `*` `argmax_over_L2`(`term_2` `*` `argmax_over_L1`(`term_1`)))
-- Now, we can start from the right side, solve the maximization over `lane_t=1` (it does not depend of `lane_t=2`)
-- Then store this result in memory and use it to solve the maximization over `lane_t=2`
-- Finally use the solve the maximization over `lane_t=3`
-- This is the idea of the dynamic programming approach.
+- Now, we can **start from the right side**, solving the **maximization over `L1`** (it does not depend of `L2`)
+- Then **store this result in memory and use it** to solve the **maximization over `L2`**
+- Finally **use the retult** to solve the **maximization over `L3`**
+- This is the idea of the **Dynamic Programming** approach.
 
-Similar to the `alpha`, `beta` and `pi` variables, let's introduce `alpha*(i, t)`:
-- `alpha*(i, t)` = `P`([`low speed` (`t=1`), ..., `___ speed` (`t=t`)] **and** [`lane_t=1`, ..., `lane_t=t-1`] being optimal **and** `lane_t` `=` `i`)
-- It can be noted that `alpha*(i, t)` is similar to `alpha(i, t)`:
-	- Except that `alpha(i, t)` did not have the term _"and_ [`lane_t=1`, ... `lane_t=t-1`] _being_ _optimal"_ 
-	- Instead, `alpha(i, t)` was marginalizing over [`lane_t=1`, ... `lane_t=t-1`]
-	- Here, we fix their value to the optimal sequence for the time [`1`, `t-1`]
-- A recursion rule can be establish:
-	- Using the fact that "lane_t=1`, ..., `lane_t=t`] being optimal" can be written `max_over_j`("[`lane_t=1`, ..., `lane_t=t-1`] being optimal **and** `lane_t=t` `=` `j`")
-		- The value that maximizes this quantity is the optimal value of `lane_t=t` (`t-th` element in `L*`)
-	- Then decompose the joint probability into some conditional probability and simplify using the **conditional independance**:
-	- It yields to: `alpha*(i, t+1)` = `P`( `speed_t+1` given `lane_t+1` `=` `i`]) `*` `P`( `lane_t+1` given `lane_t`]) * `max_over_j`[`alpha*(i, t)`]
-	- Again, similar to the `alpha` construction, except that the elements at `t+1` are constructed using the `max` among elements at `t` instead of summing all elements at `t`.
-	- **It is important, when solving the `max()`, to store the `argmax()`**. It will be used to **construct the best sequence `L*`**.
+Similar to the `alpha`, `beta` and `pi` variables, let's **introduce `alpha\*(i, t)`**:
+- `alpha*(i, t)` = `P`([`observed speed` (`t=1`), ..., `observed speed` (`t=t`)] **and** [`L1`, ..., `Lt-1`] being optimal **and** `lane_t` `=` `i`)
+- It can be noted that **`alpha\*(i, t)` is very similar to `alpha(i, t)`**:
+	- Except that `alpha(i, t)` does not have the term _"and_ [`L1`, ... `Lt-1`] _being_ _optimal"_ 
+	- Instead, **`alpha(i, t)` was marginalizing over [`L1`, ... `Lt-1`]**
+	- Here, **`alpha\*(i, t)`**, their value are **fixed to the optimal sub-sequence for the time [`1`, `t-1`]**
+- A **recursion rule** can be establish:
+	- "[`L1`, ..., `Lt`] being optimal" can be written
+		- `max_over_j`("[`L1`, ..., `Lt-1`] being optimal **and** `Lt` `=` `j`")
+		- And the value that maximizes this quantity is precisely the **optimal value of `Lt\*`** (i.e. ** the `t-th` element in `L\*`**)
+	- Then decompose the **joint probability** into some **conditional probability**
+	- Simplify the expression using the **conditional independance**:
+	- It yields to:
+		- `alpha*(i, t+1)` = `P`(`speed_t+1` given `Lt+1=i`]) `*` `P`(`Lt+1` given `Lt`]) * `max_over_j`[`alpha*(j, t)`]
+	- This is **very similar to the `alpha` construction**, except that the elements at `t+1` are constructed **using the `max()`** over elements at `t` **instead of summing** all elements at `t`.
+	- **It is important, when solving the `max()`, to store the `argmax()`, i.e. the `lane` that has the higest `alpha\*`**.
+		- This information will be used to **derive the best sequence `L*`**.
 - Initialisation:
 	- For `t=1`, there is no `max()` operation
-	- `alpha*(i, t=1)` `=` `P`( `speed_t=1` given `lane_t=1` `=` `i`]) `*` `P`( `lane_t=1` `=` `i`)
-	- Therefore `alpha*(i, t=1)` == `alpha(i, t=1)`
-- Inferrence: how to find the elements of `L*`?
-	- `argmax()` in the **last column** will give the optimal value of `lane_t=t` (**last element in** `L*`)
-	- then remember the previous `argmax()` used to build the table.
-
-| ![Construction of the `alpha* table` using Dynamic Programming](docs/alpha_star_table.gif "Construction of the `alpha* table` using Dynamic Programming")  | 
+	- Hence `alpha*(i, t=1)` `=` `P`( `speed_t=1` given `L1` `=` `i`]) `*` `P`( `L1` `=` `i`)
+	- In other words, **`alpha\*(i, t=1)` == `alpha(i, t=1)`**
+- Inferrence: how to **find the elements** of the **optimal sequence `L\*`**?
+	- Start by applying `argmax()` in the **last column**. It gives the optimal value of `Lt` (**last state in `L\*`**)
+	- Then, for each timestep `t`, starting by the end, **query the memory** and **find `argmax()` at `t-1`** that has been used to compute this `alpha*`.
+	- This is the reason why it is important to **store the transitions resulting of `max()` operations** when builing the `alpha*` table.
+	
+| ![Construction of the `alpha* table` using Dynamic Programming](docs/alpha_star_table.PNG "Construction of the `alpha* table` using Dynamic Programming")  | 
 |:--:| 
 | *Construction of the `alpha\* table` using Dynamic Programming* |
 
 Applying **`max()` in the last column** gives the **joint probability for the most probable state sequence**:
 - `0.0546` = P([`low speed`, `high speed`, `low speed`] **and** [`right lane`, `right lane`, `right lane`])
-- This result has also been found in the "naive approach" above.
+- This result had already been found in the "naive approach" above.
 
 | ![Use of the `alpha* table` for the **decoding** of an observation sequence](docs/alpha_star_table_decoding.gif "Use of the `alpha* table` for the **decoding** of an observation sequence")  | 
 |:--:| 
 | *Use of the `alpha\* table` for the **marginal probability** of an **observation sequence*** |
 
 
-Decoding only requires only two types of information:
-- the `alpha*` value in the last column
-- the transitions followed between column when building the table (i.e. the `argmax`)
+**Decoding** only requires only two types of information:
+- The `alpha*` values in the **last column**.
+- The **transitions** followed between columns when building the table (i.e. the `argmax`).
 
-In other words, the `alpha*` values in the non-last columns are useless:
-- no `argmax` operation is performed to construct the optimal sequence from the table, except for the last column.
-- **it could well be the case that `alpha\*`(`left_lane`, `t=2`) > `alpha\*`(`right_lane`, `t=2`)**, while `alpha*`(`left_lane`, `t=2`) still remains the `argmax` when building column `t=3`
-- it this case, **`alpha\*`(`right_lane`, `t=2`) would still be chosen** since it is located on the optimal path.
+In other words, **`alpha\*` values in the non-last columns are useless for decoding**:
+- No `argmax()` operation is performed to construct the optimal sequence from the table, except for the last column.
+- It **could be the case** that `alpha\*`(`left_lane`, `t=2`) could be larger than `alpha\*`(`right_lane`, `t=2`).
+- But that due to **the transition probabilities**, it is **not chosen with `argmax()`** in the next column.
+	- remember that the `max()` operation is on the **product `alpha\*` `\*` `transition`**. Not just on `alpha*`.
+- Nevertheless in this case **`alpha\*`(`right_lane`, `t=2`) would still be chosen when building L\*** since it is located on the optimal path.
 
 Answer:
 - [`right_lane`, `right_lane`, `right_lane`] is the **most likely `lane` sequence** if the **observation sequence** is [`low speed`, `high speed`, `low speed`]
@@ -886,3 +893,9 @@ HMM directly models the transition probability and the phenotype probability, an
 It is Bayes Rule that forms the basis of HMM. On the contrary, CRF and MEMM’s based on MaxEnt models over transition and observable features.
 
 "Marginalize over x". Not "Marginalize x"
+
+viterbi converts a maximization problem into a ... problem
+
+The current state is not observable. Instead, each state produces an output with a certain probability (B).
+According to the above definition, βT(i) does not exist.
+Obviously both Forward and Backward algorithms must give the same results for total probabilities P(O) = P(o(1), o(2), ... , o(T) ).
