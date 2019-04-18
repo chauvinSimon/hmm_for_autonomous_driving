@@ -10,46 +10,46 @@ Disclaimer:
 
 Addressed topics:
 - Problem setting using a basic example to introduce the **HMM terminology**.
-- Illustration of the **Bayes Rule** to determine the most likely sequence of state given a observation sequence.
-- Implementation of the **Forward and Backward Algorithm** to compute the probability of a particular observation sequence.
-- Implementation of the **Viterbi Algorithm** to find the most likely sequence of hidden states which could have generated a given observation sequence (**posterior decoding**).
-- Implementation of the **Baum-Welch Algorithm** to find the most likely parameters (state transition and emmission models) of the HMM given a observation sequence (**parameter learning** task).
+- Illustration of the **Bayes Rule** to determine the most likely state given an observation sequence.
+- Implementation of the **Forward Algorithm** and the **Backward Algorithm** to compute the probability of a particular observation sequence.
+- Implementation of the **Viterbi Decoding Algorithm** to find the most likely sequence of hidden states which could have generated a given observation sequence.
+- Implementation of the **Baum-Welch Algorithm** to find the most likely parameters (state transition and emission models) of the HMM given an observation sequence.
 
-?? Given the model parameters, : is Solved by the Viterbi algorithm and **Posterior decoding**.
-
-?? Structure:
-- Problem motivation
-- ... 
+[Bonus](#Bonus):
+- **Litterature review** of **HMM implementations** for **Autonomous Driving**.
 
 # Problem motivation
 For left-hand-drive countries such as the UK, just invert the reasoning :smiley:
 
 - Your car is driving on a **2-lane highway**.
-- Imagine that you can **remotely monitor the velocity of the car (I communicate it to you)**
-- But you do have **no direct access to the lateral position** (`right lane` of `left lane`). Formally, you **cannot view the underlying stochastic walk between `lane` states**.
-- How could you deduce the `lane` based on the single information we receive (the `speed`)?
+- Imagine that you can **remotely monitor the velocity of the car** (e.g. I communicate it to you).
+- But you do have **no direct access to the lateral position** (`right lane` of `left lane`).
+	- Formally, you **cannot access the underlying stochastic walk between `lane` states**.
+- How could you **infer the `lane`** based on the single information you receive (the `speed`)?
 
 ### Emission probability
 
-If I am telling you that I am driving with a `low speed`, you **may deduce** that I am on the right lane.
-- For instance, because I am just driving alone at a reasonable pace
-- Or because I am blocked by a slow vehicle.
-- But I could also drive fast on this `right lane` *(have you ever been driving alone on a German highway?)*
+If I am telling you that I am driving with a `low speed`, you **may guess** that I am on the right lane.
+- For instance, because I am just driving alone at a reasonable pace.
+- Or because I am blocked by a slow vehicle while not able to take it over.
+- But I could also drive fast on this `right lane`:
+	- Have you ever been driving alone on a non-limited German highway?
 
 Similarly, if you get informed of a `high speed`, you could say that I am **more likely** to be driving on the left lane.
 - Probably overtaking another vehicle.
-- Nevertheless, this is **not always true**: think of the situation where you are waiting on the left lane behind a truck trying to overtake another truck.
+- Nevertheless, this is **not always true**:
+	- Think of the situation where you are waiting on the left lane behind a truck trying to overtake another truck.
 
 We get a **first intuition**:
 - The variable `lane` seems to have an impact on the variable `speed`.
 - In  other words: **you do not drive at the same pace depending if you are one the `left lane` or the `right lane`**.
 - But the relation is **not deterministic**, rather **stochastic**.
 
-This finding will be modelled using **`emission probabilities`** in the following.
+This **causality finding** will be modelled using **`emission probabilities`** in the following.
 
 ### Transition probability
 
-You could have another intuition:
+You could have a second intuition about the **sequential process**:
 - Human drivers usually **stay on their lanes**.
 - Hence if you are on `right lane` at time `t`, you are likely to still be on `right lane` at time `t+1`.
 - Again, this **does not always hold** and you can find **exception**.
@@ -311,7 +311,7 @@ Well, just looking at the numbers on the figure below and taking the `max()`, th
 
 It is close to our intuition.
 
-This method is sometimes named **"Posterior Decoding"**.
+?? This method is sometimes named **"Posterior Decoding"**.
 
 ## Q3 - What is the probability to observe a particular **sequence of `speed` measurements**?
 
@@ -631,6 +631,10 @@ Assume that after the second observation, the sub-sequence (`left lane`, `right 
 - Do not forget that the only goal is to **find the most likely sequence (and nothing else)!**
 - Whatever you append to the sub-sequence (`left lane`, `right lane`), the resulting sequence will be less likely than appending the same to (`right lane`, `right lane`).
 
+This intuition will be implemented in the so called Viterbi Algorithm:
+- Similar to `alpha` table (from left to right), it calculates the best sequence **storing partial paths**, the paths that are winning so far (and **dropping the ones that have lower probability** so far).
+- When it gets to the end, it **goes back using pointers** to get the **most likely path**.
+
 This example show the intuition of `Dynamic Programming`:
 
 > Compute local blocks and consider only the most promising ones to build the next ones.
@@ -684,6 +688,7 @@ Let's count how many times each `fibo_vanilla_recursive(i)` is called when compu
 
 This is a maximization problem:
 - The goal is to **find the hidden state sequence** [`lane_t=1`, `lane_t=2`, `lane_t=3`] that **maximizes the joint probability** `P`([`lane_t=1`, `lane_t=2`, `lane_t=3`] and [`low speed` (`t=1`), `high speed` (`t=2`), `low speed` (`t=3`)])
+- It can be thought as a **search for the single most likely path**.
 
 Let's call **`L\*`** the **optimal hidden state sequence**, and let's note `L1` = `lane_t=1`, `L2` = `lane_t=2` and `L3` = `lane_t=3`:
 - `L*` = `argmax_over_L1_L2_L3`(`P`([`L1`, `L2`, `L3`] and [`low speed` (`t=1`), `high speed` (`t=2`), `low speed` (`t=3`)]))
@@ -743,7 +748,7 @@ Applying **`max()` in the last column** gives the **joint probability for the mo
 
 **Decoding** only requires only two types of information:
 - The `alpha*` values in the **last column**.
-- The **transitions** followed between columns when building the table (i.e. the `argmax`).
+- The **pointers**, i.e. the transitions followed between columns when building the table (to recover the `argmax`).
 
 In other words, **`alpha\*` values in the non-last columns are useless for decoding**:
 - No `argmax()` operation is performed to construct the optimal sequence from the table, except for the last column.
@@ -759,6 +764,8 @@ Answer:
 
 
 
+??? Given the model parameters, differnce the Viterbi algorithm and **Posterior decoding**.
+Although the Viterbi decoding algorithm provides one means of estimating the hidden states underlying a sequence of observed characters, another valid means of inference is provided by **posterior decoding**.
 
 Viterbi algorithm
 - first think the HMM in the **trellis representation**
@@ -772,6 +779,9 @@ pass  # notebook
 
 ## Q5 - What if you are **not directly given the probability models**?
 
+We can indeed use either algorithm for training the model,
+- but the Baum-Welch algorithm computes exact state occupancies whereas the Viterbi algorithm only computes an approximation
+
 Trellis structure
 ? = any path [Sum weighting with transitions and finally emission]
 	- Naive (consider all): 2*T*N^T
@@ -779,7 +789,10 @@ Trellis structure
 Viterbi = best path [Max of (weighting with transition) and finally emission]
 	- interested in the best sequence
 	- max over q of P(q|obs, hmm)
+	- The Viterbi algorithm only finds the single most likely path, and its corresponding probability
 	- if the best path ending in qt=sj, goes via qt-1=si, then it should coincide with best path ending in qt-1=si
+	- We can indeed use either algorithm for training the model, but the Baum-Welch algorithm computes **exact state occupancies** whereas the Viterbi algorithm only computes an approximation. 
+	- Because it is much faster than Baum-Welch, it is often used to quickly get the model parameters to approximately the most likely values, before “fine tuning” them with Baum-Welch.
 Initialisation, iteration, termination
 Goal: maximise P(Observation given HMM)
 	- resolution of max: dP/dModel = 0
@@ -787,6 +800,7 @@ Goal: maximise P(Observation given HMM)
 	- Baum-Welch
 p(obs | hmm) = Sum over state of P(obs | state=s, hmm) * P(state=s | hmm)
 
+### Baum-Welch: the Forward-Backward algorithm for parameter learning
 
 ### Note: Generative VS Discriminative Models
 The approaches used in supervised learning can be categorized into discriminative models or generative models.
@@ -841,6 +855,20 @@ During inference, we listed all possible instance of Y and select the one that m
 		- They direct map the given unobserved variable (target) x a class label y depended on the observed variables (training samples)	
 		- They try to learn which features from the training examples are most useful to discriminate between the different possible classes.
 	
+The HMM is a stochastic generative model
+- An HMM is **stochastic** because the state sequence is a random variable
+	- we simply don’t know what value it took, when the model generated a particular observation sequence
+- when it generates an observation sequence it does so using a randomly-chosen state sequence
+- We can never know the “true” sequence because it’s a hidden random variable (let’s call it Q)
+	- What we have to do is consider all possible state sequences (so Q is best described as a probability distribution).
+	- We have to think in a Bayesian way: we must say that Q is simultaneously taking on all possible values, some more likely than others.
+- Forward Algorithm
+	- The correct way to compute the probability of an observation sequence having been generated by a model, is to sum over all possible values of Q
+	- technically, we can call this operation ‘integrating away’ Q because we only care about the probability and not about the value of Q
+	- The quantity we obtain is called the Forward probability and can be computed using the Forward algorithm.
+	- Sometimes, just interested in an approximation to the Forward probability
+		- So, instead of summing over all values of Q, we just pick the single most likely value and compute the probability of the observation sequence given that one value of Q
+
 We are trying to find the parameters for multiple probabilities:
 - **Initial state probability**: `P[lane(t)]`. It can be seen as the prior.
 
@@ -855,6 +883,8 @@ Generative Learning Algorithms:
 
 ### EM algorithm
 
+todo
+
 # Further work
 Ideas to go further:
 - at a crossing, make prediction of the route of other vehicles
@@ -865,37 +895,82 @@ I learnt and took some inspiration of
 - a [video series](https://www.youtube.com/playlist?list=PL6Xpj9I5qXYGhsvMWM53ZLfwUInzvYWsm) (in French) by Hugo Larochelle.
 - a [video](https://www.youtube.com/watch?v=kqSzLo9fenk) by Luis Serrano.
 - a series of three [blog posts](http://www.davidsbatista.net/blog/2017/11/11/HHM_and_Naive_Bayes/) by David Soares Batista.
+- some useful [Q&A](http://www.speech.zone/forums/topic/viterbi-vs-backward-forward/) in Simon King's [speech.zone](http://www.speech.zone/) forum. 
 
+# Bonus
 
-# Draft
-Viterbi finds the best state assignment to the sequence State1 ... StateN as a whole
-Posterior Decoding consists in picking the highest state posterior for each position ii in the sequence independently.
+To go further, are some **Research Papers** implementing HMMs for **Autonomous Driving**. The list is not exhaustive.
 
-Both HMMs and linear CRFs are typically trained with Maximum Likelihood techniques such as gradient descent, Quasi-Newton methods or for HMMs with Expectation Maximization techniques (Baum-Welch algorithm).
-If the optimization problems are convex, these methods all yield the optimal parameter set.
+HMMs are been used for **manoeuvre recognition** and **driving behaviour estimation**, both serving **prediction purposes**.
 
-https://pubweb.eng.utah.edu/~cs6961/papers/klinger-crf-intro.pdf
+[1]	S. Liu, K. Zheng, S. Member, L. Zhao, and P. Fan, **"A Driving Intention Prediction Method Based on Hidden Markov Model for Autonomous Driving,"** 2019.
+[[pdf]](https://arxiv.org/pdf/1902.09068.pdf)
 
-Label bias problem
-- Only for MEMM.
-- An observation can affect which destination states get the mass, but not how much total mass to pass on
-- This causes a bias toward states with fewer outgoing transitions
-- In the extreme case, a state with a single outgoing transition effectively ignores the observation.
-- Sol: CRFs are globally re-normalized
+[2]	M. Zhao, **"Modeling Driving Behavior at Single-Lane Roundabouts,"** 2019.
+[[pdf]](https://publikationsserver.tu-braunschweig.de/receive/dbbs_mods_00066445)
 
-most likely path through the HMM or MEMM would be defined as the one that is most likely to generate the observed sequence of tokens. 
+[3]	P. Vasishta, D. Vaufreydaz, and A. Spalanzani, **"Building Prior Knowledge: A Markov Based Pedestrian Prediction Model Using Urban Environmental Data."** 2018.
+[[pdf]](https://arxiv.org/pdf/1809.06045.pdf)
 
-The basic idea is, first, to establish the probability density model of the sample, and then use the model for inference prediction
-The method draws from statistical mechanics and Bayes theory.
-HMM directly models the transition probability and phenotype probability, and calculates the probability of co-occurrence. Thus, it is a generative model.
+[4]	S. B. Nashed, D. M. Ilstrup, and J. Biswas, **"Localization under Topological Uncertainty for Lane Identification of Autonomous Vehicles,"** 2018.
+[[pdf]](https://arxiv.org/pdf/1803.01378.pdf)
 
-HMM directly models the transition probability and the phenotype probability, and calculates the probability of co-occurrence.
-It is Bayes Rule that forms the basis of HMM. On the contrary, CRF and MEMM’s based on MaxEnt models over transition and observable features.
+[5]	T. Ganzow, **"Real-time detection of traffic behavior using traffic loops,"** 2018.
+[[pdf]](https://staff.fnwi.uva.nl/a.visser/education/masterProjects/vanderHamThesis.pdf)
 
-"Marginalize over x". Not "Marginalize x"
+[6]	Y. Zhang, Q. Lin, J. Wang, S. Verwer, and J. M. Dolan, **"Lane-change Intention Estimation for Car-following Control in Autonomous Driving,"** 2018.
+[[pdf]](https://www.researchgate.net/publication/324174189_Lane-change_Intention_Estimation_for_Car-following_Control_in_Autonomous_Driving)
 
-viterbi converts a maximization problem into a ... problem
+[7]	W. Yuan, Z. Li, and C. Wang, **"Lane-change prediction method for adaptive cruise control system with hidden Markov model,"** 2018.
+[[pdf]](https://www.researchgate.net/publication/327888086_Lane-change_prediction_method_for_adaptive_cruise_control_system_with_hidden_Markov_model)
 
-The current state is not observable. Instead, each state produces an output with a certain probability (B).
-According to the above definition, βT(i) does not exist.
-Obviously both Forward and Backward algorithms must give the same results for total probabilities P(O) = P(o(1), o(2), ... , o(T) ).
+[8]	E. Yurtsever et al., **"Integrating Driving Behavior and Traffic Context through Signal Symbolization for Data Reduction and Risky Lane Change Detection,"** 2018.
+[[html]](https://ieeexplore.ieee.org/document/8370754)
+
+[9]	G. Xie, H. Gao, B. Huang, L. Qian, and J. Wang, **"A Driving Behavior Awareness Model based on a Dynamic Bayesian Network and Distributed Genetic Algorithm,"** 2018.
+[[pdf]](http://hive-hnu.org/uploads/soft/20190127/1548561157.pdf)
+
+[10]	N. Deo, A. Rangesh, and M. M. Trivedi, **"How would surround vehicles move? A Unified Framework for Maneuver Classification and Motion Prediction,"** 2018.
+[[pdf]](https://arxiv.org/pdf/1801.06523.pdf)
+
+[11]	X. Geng, H. Liang, B. Yu, P. Zhao, L. He, and R. Huang, **"A Scenario-Adaptive Driving Behavior Prediction Approach to Urban Autonomous Driving,"** 2017.
+[[pdf]](https://pdfs.semanticscholar.org/0b63/2048208c9c6b48b636f9f7ef8a5466325488.pdf)
+
+[12]	D. Lee, A. Hansen, and J. Karl Hedrick, **"Probabilistic inference of traffic participants lane change intention for enhancing adaptive cruise control,"** 2017.
+[[html]](https://ieeexplore.ieee.org/document/7995823)
+
+[13]	W. Song, G. Xiong, and H. Chen, **"Intention-Aware Autonomous Driving Decision-Making in an Uncontrolled Intersection,"** 2016.
+[[pdf]](https://www.researchgate.net/publication/301718813_Intention-Aware_Autonomous_Driving_Decision-Making_in_an_Uncontrolled_Intersection)
+
+[14]	S. Lefévre, A. Carvalho and F. Borrelli, **"A Learning-Based Framework for Velocity Control in Autonomous Driving,"** 2015.
+[[pdf]](https://borrelli.me.berkeley.edu/pdfpub/Stephanie_2016_TASE.pdf)
+
+[15]	M. Schreier, **"Bayesian environment representation, prediction, and criticality assessment for driver assistance systems,"** 2015.
+[[pdf]](https://core.ac.uk/download/pdf/76650732.pdf)
+
+[16]	A. Carvalho, S. Lefévre, G. Schildbach, J. Kong, and F. Borrelli, **"Automated driving: The role of forecasts and uncertainty - A control perspective,"** 2015.
+[[pdf]](https://scinapse.io/papers/2014414177)
+
+[17]	B. Tang, S. Khokhar, and R. Gupta, **"Turn prediction at generalized intersections,"** 2015.
+[[pdf]](https://www.researchgate.net/publication/283214809_Turn_Prediction_at_Generalized_Intersections)
+
+[18]	T. Streubel and K. H. Hoffmann, **"Prediction of driver intended path at intersections,"** 2014.
+[[pdf]](https://www.researchgate.net/publication/269294116_Prediction_of_driver_intended_path_at_intersections)
+
+[19]	C. Laugier et al., **"Probabilistic analysis of dynamic scenes and collision risks assessment to improve driving safety,"** 2011.
+[[pdf]](https://www.researchgate.net/publication/229034149_Probabilistic_Analysis_of_Dynamic_Scenes_and_Collision_Risk_Assessment_to_Improve_Driving_Safety)
+
+[20]	G. S. Aoude, V. R. Desaraju, L. H. Stephens, and J. P. How, **"Behavior classification algorithms at intersections and validation using naturalistic data,"** 2011.
+[[pdf]](http://acl.mit.edu/papers/IV11AoudeDesarajuLaurensHow.pdf)
+
+[21]	D. Meyer-delius, C. Plagemann, and W. Burgard, **"Probabilistic Situation Recognition for Vehicular Traffic Scenarios,"** 2009.
+[[pdf]](http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.421.2906&rep=rep1&type=pdf)
+
+[22]	H. Berndt and K. Dietmayer, **"Driver intention inference with vehicle onboard sensors,"** 2009.
+[[html]](https://ieeexplore.ieee.org/document/5400203)
+
+[23]	D. Meyer-Delius, C. Plagemann, G. von Wichert, W. Feiten, G. Lawitzky, and W. Burgard, **"A Probabilistic Relational Model for Characterizing Situations in Dynamic Multi-Agent Systems,"** 2008.
+[[pdf]](http://ais.informatik.uni-freiburg.de/publications/papers/meyerdelius07gfkl.pdf)
+
+[24]	N. Oliver and A. P. Pentland, **"Driver behavior recognition and prediction in a SmartCar,"** 2000.
+[[pdf]](http://www.nuriaoliver.com/driverbehavior/spie2000.pdf)
