@@ -16,7 +16,7 @@ Addressed topics:
 - Implementation of the **Baum-Welch Algorithm** to find the most likely parameters (state transition and emission models) of the HMM given an observation sequence.
 
 [Bonus](#Bonus):
-- **Litterature review** of **HMM implementations** for **Autonomous Driving**.
+- **Literature review** of **HMM implementations** for **Autonomous Driving**.
 
 # Problem motivation
 For left-hand-drive countries such as the UK, just invert the reasoning :smiley:
@@ -56,6 +56,8 @@ You could have a second intuition about the **sequential process**:
 - But here comes a second intuition: **the `lane` at time `t` is influenced by the `lane` at time `t-1`**.
 
 The concept of **`transition probability`** will be used to model this second remark.
+
+In the next sections we will see how can we **mathematically support our intuition**.
 
 ## Terminology
 
@@ -139,14 +141,19 @@ Based on these assumptions, the problem can be modelled using a **graphical mode
 For better understanding, I find convenient to compare HMMs with the other algorithms and methods I know.
 
 - HMM is a special case of **Finite State Machine** (FSM).
-- **Kalman Filters** can be conceived of as continuous valued HMMs.
+- **Kalman Filters** can be conceived of as continuous valued HMMs:
+	- HMM uses *discrete* state (**Markov chain**). KF uses *continuous* state (**Markov process**).
+	- HMM uses *arbitrary transition*, KF uses *(Linear-)Gaussian transitions*.
+	- HMM uses *observation matrices*. KF uses *Gaussian observations*.
 - HMM is a special case of **Dynamic Bayes Networks** (DBNs) in which the entire state of the world is represented by a single hidden state variable.
 - HMM and **Partially Observable Markov Decision Processes** (POMDPs) have many similarities in their formulations. But in POMDPs, the user has some control (not just a spectator) over the process transitions between hidden states (introduction of the concept of `action`).
 - Contrary to HMM, in **Naive Bayes model**, hidden state are fixed (no state sequence since there is no transition happening).
 - States are hidden in HMM. They are fully observable in **Markov Chains**.
 - HMM is a special case of **Generative Directed Graphs** (GDG), where the graphical structure is a first-order-chain structure (one could impose dependencies to arbitrary elements, not just on the previous element).
 - **Linear-Chain CRF** can be seed as the discriminative version of HMM (like Logistic Regression and more generally  Maximum Entropy Models are the discriminate version of Naive Bayes) i.e. the consideration is on the conditional probability p(y|x) instead of the joint probability p(y,x).
-
+	- It is a discriminative undirected probabilistic graphical model.
+	- It is used to encode known relationships between observations and construct consistent interpretations. 
+	
 - In **Conditional Random Fields** (CRF), the two strong (unreasonable) HMM hypotheses are dropped (it better addresses the so-called "labeling bias issue" but also become more complicated for inference).
 - **Maximum Entropy Markov Models** combine features of HMMs (Markov chain connections) and maximum entropy (MaxEnt) models: it is a discriminative (not generative) model that allows the user to specify lots of correlated, but informative features.
 	- MEMMs focus on p（`state|observation`), while HMMs focus on p（`observation|state`）
@@ -186,9 +193,14 @@ Given some observation `speed` sequence and the associated `lane` states
 - You can think of it as some **samples** of the underlying **joint distributions**.
 - How can we estimate the HMM parameters (for the emission, transition and intial state models)?
 - We can count how many times each event occurs in the data and normalize the counts to form proper probability distributions.
-- In can be formalize with **Maximum Likelihood Estimation** in the context of **Supervised Learning**.
+- In can be formalize with **Maximum Likelihood Estimation** in the context of **Supervised Learning**, i.e. finding parameters `θ` that maximize `P(x|θ)`.
 
 The idea is to **approximate the model parameters by counting the occurrences**, similar to Naive Baye method where training is mainly done by counting features and classes.
+
+Note: 
+- If a rare transition or emission is **not encountered** in the training dataset, its **probability** would be **set to `0`**.
+- This may have be caused by over-fitting or a small sample size.
+- To avoid `0` probabilities, an alternative is to use **pseudocounts** instead of **absolute counts**.
 
 ### Transition probability
 
@@ -311,8 +323,6 @@ Well, just looking at the numbers on the figure below and taking the `max()`, th
 
 It is close to our intuition.
 
-?? This method is sometimes named **"Posterior Decoding"**.
-
 ## Q3 - What is the probability to observe a particular **sequence of `speed` measurements**?
 
 Had it been a first-order Markov Chain (no hidden state), one could have marginalized over all `speed(t)` observations and simplify the large expression using the **conditional independance** offered by the Markov Property.
@@ -329,8 +339,9 @@ In the HMM case, we need to add some modifications:
 | *Derivation of the probability of an observation sequence* |
 
 This requires to develop all the possible state sequences of size T.
+- In a **brute force search**, it will **look at all paths**, try all possibilities, and calculate their joint probability.
 - In our case state space has size `2` (`left_lane`, `right_lane`). Hence the **sum will contain `2^T` terms**.
-- This **naive** (meaning we list all the possibilities based on the **definition of marginal probabilities**) approach can nevertheless **become impractible** for larger state spaces and/or large sequence sizes.
+- This **naive** (meaning we list all the possibilities based on the **definition of marginal probabilities**) approach can nevertheless **become impractible** and will not scale for larger state spaces and/or large sequence sizes.
 
 An alternative is to use **Dynamic Programming**.
 - the idea is to compute cells in a table `alpha`(`i`, `t`)
@@ -357,11 +368,19 @@ An alternative is to use **Dynamic Programming**.
 Each element in the column `t+1` is a weighted sum of the elements at `t`:
 - The weights are the transition probabilities
 - The obtained sum is finally scaled by the emission probability (for the state `i` to emit the observation present at `t+1` in our observation sequence)
-	
+
+The **`alpha` values** are the **joint probabilities** of
+- observing the **first `t` observations**
+- and being in `state k` at `time t`. 
 
 | ![Construction of the `alpha table` using Dynamic Programming](docs/alpha_table.gif "Construction of the `alpha table` using Dynamic Programming")  | 
 |:--:| 
 | *Construction of the `alpha table` using Dynamic Programming* |
+
+Because there are **`S\*T` entries** and each entry examines a total of `S` other entries, this leads to
+- **`O(S\*S\*T)` time complexity**,
+- and **O(S\*T) space complexity**.
+- where `S` denotes the number of hidden states and `T` the length of the observation sequence.
 
 Once the `alpha table` is constructed, it is straight forward to get the the **marginal probability** for the associated **observation sequence**:
 - summing the `alpha` values at time `t` gives the probabily of the observation sequence up to time `t`
@@ -370,6 +389,12 @@ Once the `alpha table` is constructed, it is straight forward to get the the **m
 | ![Use of the `alpha table` for the **marginal probability** of an **observation sequence**](docs/alpha_table_marginal.PNG "Use of the `alpha table` for the **marginal probability** of an **observation sequence**")  | 
 |:--:| 
 | *Use of the `alpha table` for the **marginal probability** of an **observation sequence*** |
+
+#### Note
+
+The **sum of the elements in the last column** of the dynamic programming table provides the **total probability of an observed sequence**.
+- In practice, given a sufficiently **long sequence of observations**, the forward probabilities decrease very rapidly.
+- To circumvent issues associated with **storing small floating point numbers**, **logs-probabilities** are used in the calculations instead of the probabilities themselves.
 
 ## Q32 - Given a **sequence of `speed` measurements**, what is the most likely **latest `lane`**?
 
@@ -624,6 +649,12 @@ But for longer observation sequences, an issue appears:
 | `i`     | `2^i`       |
 | `10`     | `1024`       |
 
+The above method was a **brute force approach**:
+- we calculate the **joint probabilities** of a given observation sequence and **ALL possible paths** (state sequences)
+- and then **pick THE path** with the **maximum joint probability**.
+- Problem: there are exponential number of paths, hence this **brute force search approach** is very **time consuming** and **impractical**.
+- Solution: **Dynamic Programming** can be used.
+
 ### Dynamic Programming: an alternative to the naive enumeration
 
 Assume that after the second observation, the sub-sequence (`left lane`, `right lane`) is found to be more likely that the sub-sequence (`right lane`, `right lane`).
@@ -737,6 +768,8 @@ Similar to the `alpha`, `beta` and `pi` variables, let's **introduce `alpha\*(i,
 |:--:| 
 | *Construction of the `alpha\* table` using Dynamic Programming* |
 
+Essentially, this algorithm defines `alpha\*(i, t)` to be the probability of the most likely path through state `state_t` = `i`, and it recursively computes  `alpha\*(i, t)` using the emission model and the `alpha\*(j, t-1)` weighted by transition probabilities.
+
 Applying **`max()` in the last column** gives the **joint probability for the most probable state sequence**:
 - `0.0546` = P([`low speed`, `high speed`, `low speed`] **and** [`right lane`, `right lane`, `right lane`])
 - This result had already been found in the "naive approach" above.
@@ -745,6 +778,12 @@ Applying **`max()` in the last column** gives the **joint probability for the mo
 |:--:| 
 | *Use of the `alpha\* table` for the **marginal probability** of an **observation sequence*** |
 
+Similar to the construction of the `alpha` table (Forward algorithm), the Viterbi decoding algorithm has:
+- **`O(S\*S\*T)` time complexity**,
+	- It has reduced from **exponential** to **polynomial**:
+	- Linear in the length of the sequence and quadratic in the size of the state space.
+- and **O(S\*T) space complexity**, to remember the **pointers**.
+- where `S` denotes the number of hidden states and `T` the length of the observation sequence.
 
 **Decoding** only requires only two types of information:
 - The `alpha*` values in the **last column**.
@@ -762,10 +801,32 @@ Answer:
 - this has been found using 
 
 
-
-
-??? Given the model parameters, differnce the Viterbi algorithm and **Posterior decoding**.
-Although the Viterbi decoding algorithm provides one means of estimating the hidden states underlying a sequence of observed characters, another valid means of inference is provided by **posterior decoding**.
+Difference between the Viterbi algorithm and **Posterior decoding**:
+- Posterior decoding provides the most likely state at any point in time
+- Although the Viterbi decoding algorithm provides one means of estimating the hidden states underlying a sequence of observed characters, another valid means of inference is provided by **posterior decoding**.
+- instead of identifying a single path of maximum likelihood, posterior decoding considers the probability of **ANY path lying in state `i`** at **time `t`** given **the whole observation sequence**.
+	- i.e. P(`state_t` = `i` |[`obs_1` ... `obs_t` ... `obs_T`]).
+	- The state that maximizes this probability for **a given time `t`** is then considered as **the most likely state at THAT point**.
+- Why calling it *Posterior* Decoding?
+	- Without seeing any observation, we have the prior that the vehicle is more likely to be driving on the `right_lane` (p=`2/3`).
+	- Now appears the first observation. We update our prior using this information via Bayes rule:
+		- p(`right_lane` | `obs_1`) = p(`obs_1` | `right_lane`) \* p(`right_lane`) / p(`obs_1`)
+		- In other words: `Posterior` = normalized(`Prior` \* `Likelihood`)
+		- If `obs_1` is `low_speed`, our **belief** that `state_1` is `right_lane` is **reinforced**.
+		- If `obs_2` is also `low_speed`, information flow backwards from the second observation and reinforces our **belief** about `state_1` even more.
+	- This example shows the way information flows **backward** and **forward** to affect our belief about the states in Posterior Decoding.
+		- The computation uses both the forward algorithm and the backward algorithm.
+		
+- Can Posterior Decoding provide a path like the Viterbi algorithm would?
+	- Yes, it can.
+	- since Posterior Decoding can provide the most likely state for every point, assembling these states provides the path.
+- Can Viterbi algorithm and Posterior decoding disagree on the path?
+	- Yes, they can.
+	- When trying to classify each hidden state, the Posterior decoding method is more informative because it takes into account all possible paths when determining the most likely state.
+		- a sequence of **point-wise** most likely states
+		- it may give an invalid sequence of states!
+		- For example, the states identified at time points t and t + 1 might have zero transition probability between them.		
+	- The Viterbi method only takes into account one path, which may end up representing a minimal fraction of the total probability
 
 Viterbi algorithm
 - first think the HMM in the **trellis representation**
@@ -779,8 +840,75 @@ pass  # notebook
 
 ## Q5 - What if you are **not directly given the probability models**?
 
-We can indeed use either algorithm for training the model,
-- but the Baum-Welch algorithm computes exact state occupancies whereas the Viterbi algorithm only computes an approximation
+### Unsupervised estimation of parameters of an unlabelled dataset
+
+Supervised learning:
+- In [Q1](#q1), we were given a **training data with labels**.
+- I.e. each `speed` measurement was associated to a `lane` state.
+
+Unsupervised learning:
+- Here, were are only supplied with some sequences of `speed` observation.
+- Since the training dataset **contains no `lane` annotation**, we needed to **both** estimate **model parameters** and identify the **`lane` states**.
+
+An **iterative approache** can be used for this **unsupervised learning** problem.
+- Suppose we have some **prior believes** about the **HMM models**.
+	- We could use decoding methods to **infer the hidden states** underlying the provided observation sequence.
+	- These could **constitue our annotations** and we are back to **supervised learning**: we can estimate the HMM models (by counting as in [Q1](#q1)).
+- We can repeat this procedure until the improvement in the data’s likelihood remains relatively stable.
+
+The unsupervised estimation of parameters of an unlabelled dataset can be implemented using the concept of **Expectation Maximization** (**EM**).
+
+### EM algorithm
+
+To get familiar with the concept of EM Algorithm, I recommend having a look at this [short series of video](https://www.youtube.com/watch?v=REypj2sy_5U&list=PLBv09BD7ez_4e9LtmK626Evn1ion6ynrt) by Victor Lavrenko about Gaussians Mixture Models.
+
+He justify the commonly used image of **"chicken and egg problem"**:
+- Given true parameters, it would be easy to assign a class distribution (generative posterior probabilities) for each point.
+- Given true assignements, it would be easy to estimate the parameters (e.g. `mu` and `sigma` if Gaussian as well as the priors), weighting posteriors similar to K-means.
+
+And he draw parallels and stresses differences of **EM for Gaussian Mixtures Models** and **K-means**
+- concept of **soft vs hard clustering**,
+- use of Bayesian probabilities,
+- non-uniformity in priors,
+- and **recomputation of covariances** at each iteration.
+
+Convergence:
+- The power of **EM** lies in the fact that P([`obs_sequence`]|`HMM_parameters`) is **guaranteed to increase** with each iteration of the algorithm.
+- When this probability converges, a **local maximum** has been reached.
+- To find the **global maximum**, one could run this algorithm using a variety of initialization states.
+
+
+Der Baum-Welch-Algorithmus ist ein erwartungsmaximierender Algorithmus. Er berechnet die Maximalwahrscheinlichkeitsschätzungen (Maximum-Likelihood-Schätzwerte) und die sogenannten Posterior-Mode-Schätzungen für die gegebenen Parameter (Übergangs- und Emissionswahrscheinlichkeit) eines HMMs, wenn nur die Emissionen als Trainingsdaten gegeben sind. 
+
+Der Algorithmus arbeitet in zwei Schritten:
+- Erstens berechnet er die Vorwärtswahrscheinlichkeit (forward probability) und die Rückwärtswahrscheinlichkeit (backward probability) für jeden Zustand des HMMs.
+- Zweitens, auf der Basis dieses ersten Schrittes, berechnet er die Frequenz der Übergangs-Emissions-Paar-Werte und dividiert diese durch die Wahrscheinlichkeit des gesamten Strings (sog. posterior decoding).
+- Dies führt zu der Berechnung der erwarteten Zählung des einzelnen Übergangs-Emissions-Paares.
+- Jedes Mal, wenn ein einzelner Übergang gefunden wird, erhöht sich der Wert des Quotienten des Übergangs und der Wahrscheinlichkeit der gesamten Zeichenkette.
+- Dieser Wert kann dann zum neuen Wert des Übergangs gemacht werden.
+
+#### Implementation
+Two methods are:
+- Expectation Maximization using Viterbi training.
+	- **`E`**-step: Viterbi decoding is performed to find THE best sequence of hidden states. The **E**stimate forms the annotation.
+	- **`M`**-step: the new parameters are computed using the simple counting formalism in supervised learning (**M**LE).
+	- Iteration: Repeat the E and M steps until the likelihood P([`obs_sequence`]|`HMM_parameters`) converges.
+
+- Expectation Maximization: The Baum-Welch Algorithm
+	- Initialisation: HMM parameters are initialized to some best-guess parameters. ??? Initial state or initial parameters???
+	- **`E`**-step: considering the observation sequence, the **`E`XPECTED probability** is estimated for hidden states.
+	- **`M`**-step: based on the **probability distribution** of hidden states, new HMM parameters are estimated using **`M`AXIMUM likelihood Estimate** techniques.
+
+A parallel can be drawn with the difference between **point-based estimates** and **distributions** for estimating parameters (for instance the position of an object):
+	- Baum-Welch uses **distribution over states** to estimate the HMM parameters in the M-step.
+		- Hence the Baum-Welch algorithm computes **exact state occupancies**
+	- In Viterbi-EM, **annotations** are used.
+		- They are the **instances** (e.g. [`right_lane`, `left_lane`, `left_lane` ...]) that have the **highest probability** (here the problem is discrete) in the distribution.
+
+Remember that the Viterbi decoding **only considers THE most probable hidden path** instead of the collection of all possible hidden paths.
+	- This approximation causes the training to converge rapidly.
+	- But the resulting parameter estimations are usually inferior to those of the Baum-Welch Algorithm.
+
 
 Trellis structure
 ? = any path [Sum weighting with transitions and finally emission]
@@ -800,7 +928,84 @@ Goal: maximise P(Observation given HMM)
 	- Baum-Welch
 p(obs | hmm) = Sum over state of P(obs | state=s, hmm) * P(state=s | hmm)
 
-### Baum-Welch: the Forward-Backward algorithm for parameter learning
+### Baum-Welch
+
+We know how to compute the likelihood P([`obs_sequence`]|`HMM_parameters`) using either the **forward** or **backward** algorithm’s final results:
+- Sum over **last column** in the `alpha` table.
+- Sum over **first column** in the `beta` table.
+
+How to perform the M-step, i.e. to update the paramters using the expectation over state annotations?
+- Let's call `θ` the HMM parameters (emission and transition probabilities).
+- In our simple example, we are interested in learning contains `2^3` + `2` = `10` parameters:
+	- P(`state_1` = `right_lane`)
+	- P(`state_1` = `left_lane`)
+	- P(`state_t+1` = `right_lane` | `state_t` = `right_lane`)
+	- P(`state_t+1` = `right_lane` | `state_t` = `left_lane`)
+	- P(`state_t+1` =  `left_lane` | `state_t` = `right_lane`)
+	- P(`state_t+1` =  `left_lane` | `state_t` = `left_lane`)
+	- P(`obs_t` =  `low_speed` | `state_t` = `right_lane`)
+	- P(`obs_t` =  `low_speed` | `state_t` = `left_lane`)
+	- P(`obs_t` = `high_speed` | `state_t` = `right_lane`)
+	- P(`obs_t` = `high_speed` | `state_t` = `left_lane`)
+- Let's note the likelihood P([`obs_sequence`]|`HMM_parameters`) = P(`x`|`θ`).
+- We are looking for `θ*` = `argmax`[P(`x`|`θ`)]
+	- i.e. the parameters that gives the highest probability for the observations to have been emitted by the HMM.
+	- i.e. the parameters that explains the best the observations
+ 
+We know how to do smoothing:
+- We introduced `gamma`(`lane_k`, `time_t`):
+- `gamma`(`lane_k`, `time_t`) = `alpha(k, t)` \* `beta(k, t)` / P(`x`|`θ`).
+- It is the probability that the system is at `lane` `k` at the `t`-th time step, given the full observation sequence `x` and the model `θ`.
+- Summing the last column of the `alpha` table gives P(`x`|`θ`) = Sum over `k` of `alpha(k, T)`.
+
+In supervised learning (when working with single annotations), we processed by counting:
+- For instance P(`state_t+1` = `left_lane` | `state_t` = `right_lane`) = `#`[`right`->`left`] / (`#`[`right`->`left`] + `#`[`right`->`right`])
+- Here, we need to derive **Expectation** over these counts.
+
+Ingredient `1/2`: Expectation of `state` counts.
+- At the **denominator**: how many times is the state trajectory **expected** to **transition from state `right`**?
+- We can **use the `gamma` variable** introduced for **smoothing**:
+- EXPECTED(`#`[transitions from `right_lane`]) = Sum for time `t=1` to time `t=T` of `gamma`(`right_lane`, `time_t`)
+
+Ingredient `2/2`: Expectation of `transition` counts.
+- Similar to `gamma`, we introduce `xi`:
+- `xi`(`lane_k`,`lane_l`, `time_t`) is the probability of being at state `k` at time `t`, and at state `l` at time `t+1`, given the full observation sequence and the current HMM model.
+- `xi` can be computed using `alpha` values, `beta` values and the current HMM model.
+- EXPECTED(`#`[`lane_k`->`lane_l`]) = Sum for time `t=1` to time `t=T-1` of `xi`(`lane_k`, `lane_l`, `time_t`)
+
+Now we can derive update rules for the HMM parameters:
+- `new` P(`lane_k`->`lane_l`) = `E`[# of transitions from state `k` to state `l`] / `E`[# of transitions from state `k`]
+	- The numerator is: Sum for time `t=1` to time `t=T-1` of `gamma`(`right_lane`, `time_t`)
+	- The denominator is: Sum for time `t=1` to time `t=T-1` of `xi`(`lane_k`, `lane_l`, `time_t`)
+- `new` P(`lane_k` emits `speed_s`) = `E`[# of times in state `k`, when the observation was `s`] / `E`[# of times in state `k`]
+	- The numerator is: Sum for time `t=1` to time `t=T` of `gamma`(`lane_k`, `time_t`) \* 1[`obs_t`==`s`]
+	- The denominator is: Sum for time `t=1` to time `t=T` of `gamma`(`lane_k`, `time_t`)
+
+To sumarize, working with distributions, an expression can be derived using the `alpha` and `beta` values:
+- P(`state_t+1`=`l`|`state_t`=`k`) = sum over `t` of `alpha(k, t)` \* P(`state_t+1`=`l`|`state_t`=`k`) \* P(`obs_t+1`|`state_t+1`=`l`) \* `beta(l, t+1)` / P(`x`|`θ`)
+- P(`obs_t`=`b`|`state_t`=`k`) = sum over `t` of `alpha(k, t)` \* `beta(k, t)` / P(`x`|`θ`)
+ 
+1.	Run the forward algorithm
+2.	Run the backward algorithm
+3.	Calculate the new log-likelihood P([`obs_sequence`]|`HMM_parameters`)
+4.	Calculate Transition and Emission parameters (potentially with pseudocounts).
+5.	Repeat until P([`obs_sequence`]|`HMM_parameters`) converges
+
+Complexity:
+- the time complexity of the **forward** and **backward** algorithms was `O(S\*S\*T\*N)`.
+- when running them, we have all of the information necessary to calculate the likelihood and to update the emission and transition probabilities during each iteration.
+- updates are **constant time operations** once P(x|θ), fk(t) and bk(t) have been computed,
+- Hence the **total time complexity** for this Baum-Welch algorithm is **`O(S\*S\*T\*N)`**, where
+	- `S` denotes the number of hidden states
+	- `T` the length of the observation sequence
+	- `N` is the total number of iterations
+
+How to **encode your prior beliefs** when learning with Baum-Welch?
+- Those prior beliefs are encoded in the **initializations** of the **forward and backward algorithms**
+
+Overfitting.
+- Note that it is possible that P(`x`|`θ`) `>` P(`x`|`θ_true`)!
+- This is due to overfitting over one particular data set.
 
 ### Note: Generative VS Discriminative Models
 The approaches used in supervised learning can be categorized into discriminative models or generative models.
@@ -819,12 +1024,24 @@ In prediction (inference), given an observation, it computes the predictions for
 
 Why are HMMs Generative Models?
 
+If we are given an HMM (transition model, emission model and initial state distribution), we can **generate an observation sequence** of length `T` easily:
+- **Sample** the state `state_1` from the **initial state distribution**.
+- Then loop until emitting the T-th observation:
+	- **Emit** an observation using the emission model `obs_t`|`state_t`.
+	- **Go to next state** according to the transition probability `state_t+1`|`state_t`.
+
 It is possible to **generate** a sequence of observation from the HMM model (= **Sampling**)
 - 1- first, sample an initial state
 - 2- then, for t=2 until t=T, sample two quantities:
 	- sample a new state (based on the transition model)
 	- sample an observation for this state (based on the emission model)
 - Another option it to first generate a state sequence (based on the transition model). Then sample for each state sample its observation (using the emission model)
+
+- In computational biology, HMMs are used:
+	- Among others, to generate (emit) sequences of similar type according to the generative model.
+	- The task requires understanding all the properties of genome regions and computationally building generative models to represent hypotheses.
+	- HMMs are generative models, in that an HMM gives the probability of emission given a state (with Bayes’ Rule), essentially telling you how likely the state is to generate those sequences.
+		- So we can always run a generative model for transition between states and start anywhere.
 
 - 1- During training, the goal is to estimate parameters of **P(`X|Y`)**, **P(`Y`)**
 	- Our model explicitly describes the prior distribution on states, not just the conditional distribution of the observation given the current state
@@ -881,21 +1098,65 @@ Generative Learning Algorithms:
 [Here](https://medium.com/@mlengineer/generative-and-discriminative-models-af5637a66a3) is a nice post to get an intuition of Generative an Discriminative models.
 [](http://ai.stanford.edu/~ang/papers/nips01-discriminativegenerative.pdf)
 
-### EM algorithm
+## Summary
 
-todo
+### Scoring
+How likely is some observation sequence to be emitted (potentially in association with a state sequence)?
 
-# Further work
-Ideas to go further:
-- at a crossing, make prediction of the route of other vehicles
-	- `route` in {`left`, `straight`, `right`} is the hidden variable
+- One-path Scoring
+	- The single path calculation is the **likelihood** of observing the **given observation sequence** over **ONE particular state sequence** (also called **path**)
+	- It computes the joint probability using the decomposition **P(`obs`, `state`) = P(`obs` | `state`) \* P(`state`)
+	- *??what is the name of this decomposition??*
+- All-path Scoring
+	- It computes given sequence of observations or emissions regardless of the 
+	- It computes the probability of the observation sequence using the marginalization: P(`obs`) = Sum over all `state` of P(`obs`, `state`) where P(`obs`, `state`) can be seen as a one-path score.
+	- The **forward algorithm** calculates the exact sum iteratively by using dynamic programming
+	- It can be computed by summing the last column in the `alpha` table. Or the first column in the `beta` table.
 
+Instead of computing the probability of a **single path** of hidden states emitting the observation sequence (Viterbi), the **forward algorithm** calculates the probability of the **observation sequence being produced by ALL possible paths**.
+- The forward algorithm introduces the **`alpha` values**: the joint probability of **observing the first `t` observations** and being in **state `k` at time `t`**.
+- The backward algorithm introduces the **`beta` values**: the conditional probability of **observing the observations from time `t` to the end** given the **state at time `t`**.
+- Given that the number of paths is exponential in t, **dynamic programming** must be employed to solve this problem.
+- Viterbi and Forward algorithm share the same recursion. But Viterbi algorithm uses the maximum function whereas the forward algorithm uses a sum
+
+### Decoding
+Given some observed sequence, what path gives us the maximum likelihood of observing this sequence?
+- **Decoding** looks for a **path** (sequence of states).
+- **Filtering** and **Smoothing** look for most likely state for **ONE single time**.
+
+- One-path Decoding:
+	- **Viterbi decoding algorithm** finds the most probable state path, i.e. **THE hidden state sequence** (a path) that **maximizes the joint probability** of the observation sequence [`obs_t1` ... `obs_tn`] and hidden state sequence [`state_t1` ... `state_tn`], i.e. P([`obs_t1` ... `obs_tn`], [`state_t1` ... `state_tn`]).
+	- It is a **dynamic programming** algorithm: the best path can be obtained based on the best path of the previous states.
+	- The `alpha*(i, t)` variable represents the probability of the most likely **path ending at state `i`** at time `t` in the path.
+	- By keeping pointers backwards, the actual hidden state sequence can be found by backtracking.
+	- Viterbi can be used to give a first approximation of the all-path scoring:
+		- But it is just a small fraction of the probability mass of all possible paths.
+		- Hence the approximation is valid only if this particular path has high probability density.
+	
+- All-path Decoding:
+	- **Posterior Decoding** returns the sequence of hidden states that contains the **most likely states at any time point**.
+		- It uses both the forward and the backward algorithm.
+
+## Learning
+Given some observation sequence (and potentially the associated state sequence), what are the most likely HMM parameters?
+
+Let's call `θ` the HMM parameters (emission and transition probabilities), and `π` a **path** (i.e. a sequence of hidden states).
+
+- One-path Learning:
+	- In supervised learning, the **counting method** (MLE) looks for `argmax_over_θ` of [P(`x`, `π`|`θ`)], given the annotation true `π` (annotation).
+	- In unsupervised learning, **Viterbi-EM** looks for `argmax_over_θ` of `MAX_over_π` of [P(`x`, `π`|`θ`)].
+	
+- All-path Learning:
+	- In unsupervised learning, **Baum-Welch-EM** looks for `argmax_over_θ` of `SUM_over_π` of [P(`x`, `π`|`θ`)].
+	
 # Acknowledgement and references
-I learnt and took some inspiration of
-- a [video series](https://www.youtube.com/playlist?list=PL6Xpj9I5qXYGhsvMWM53ZLfwUInzvYWsm) (in French) by Hugo Larochelle.
-- a [video](https://www.youtube.com/watch?v=kqSzLo9fenk) by Luis Serrano.
-- a series of three [blog posts](http://www.davidsbatista.net/blog/2017/11/11/HHM_and_Naive_Bayes/) by David Soares Batista.
-- some useful [Q&A](http://www.speech.zone/forums/topic/viterbi-vs-backward-forward/) in Simon King's [speech.zone](http://www.speech.zone/) forum. 
+I learnt and took some inspiration of:
+- A [video series](https://www.youtube.com/playlist?list=PL6Xpj9I5qXYGhsvMWM53ZLfwUInzvYWsm) (in French) by Hugo Larochelle.
+- A [video](https://www.youtube.com/watch?v=kqSzLo9fenk) by Luis Serrano.
+- A [course](https://ocw.mit.edu/courses/aeronautics-and-astronautics/16-410-principles-of-autonomy-and-decision-making-fall-2010/lecture-notes/) by Williams and Frazzoli, based on their experiences in the DARPA Urban Challenge.
+- A [lecture](http://web.mit.edu/6.047/book-2012/Lecture08_HMMSII/Lecture08_HMMSII_standalone.pdf) from Mavroforakis and Ezeozue.
+- A series of three [blog posts](http://www.davidsbatista.net/blog/2017/11/11/HHM_and_Naive_Bayes/) by David Soares Batista.
+- Some useful [Q&A](http://www.speech.zone/forums/topic/viterbi-vs-backward-forward/) in Simon King's [speech.zone](http://www.speech.zone/) forum. 
 
 # Bonus
 
