@@ -2,11 +2,20 @@
 
 WORK IN PROGRESS!!
 
-todo:
-- python implementation of Baum-Welch
-	- pytest
+to do:
 - squash commits
-- generation based on the model
+- real traffic data for learning
+- include notes about generative model
+
+todo:
+- load real highway data from US Department of Transportation 
+- https://github.com/hmmlearn/hmmlearn/issues/70
+- https://gist.github.com/dougalsutherland/1329976
+- https://drive.google.com/file/d/0B51S7y4fFTS2bnNLcnllc1dpdVE/view
+
+Typo:
+- capital letters or not
+- check links (brocken)
 
 # Introduction
 Disclaimer:
@@ -173,7 +182,7 @@ A discrete Hidden Markov Model (HMM) is a **5-tuple** composed of:
 - A stochastic matrix which gives **Transition probabilities**: P[`lane(t+1)` | `lane(t)`]
 - An **Initial State Probability** distribution: P[`lane(t=t0)`]
 
-## Questions:
+# Questions:
 - [Q1](#q1) - How to easily **estimate the parameters** of our HMM?
 - [Q2](#q2) - Given a **single `speed` observation**, what is the probability for the car to be in each of the two lanes?
 - [Q3](#q3) - What is the probability to observe a particular **sequence of `speed` measurements**?
@@ -1032,7 +1041,7 @@ Speed of convergence.
 - The **quality of the estimation** is usually inferior to those of the Baum-Welch Algorithm.
 - But **Viterbi-EM** can be used to **quickly get an estimate** of the model parameters, before **fine tuning them with Baum-Welch**.
 
-### Baum-Welch
+### Baum-Welch Algorithm
 
 Let's now deep into the **derivation of Baum-Welch**, having in mind the supervised learning techniques.
 
@@ -1139,67 +1148,74 @@ Convergence and overfitting.
 
 The [notebook](hmm_for_autonomous_driving.ipynb) implements the solution to the different questions.
 
+I am using the [hmmlearn](https://hmmlearn.readthedocs.io/en/latest/index.html#) package.
+- To install it on Windows, you may want to get the **compiled version** [https://www.lfd.uci.edu/~gohlke/pythonlibs/#hmmlearn](here).
+
 ## Summary
 
 Here are some of the **key concepts** to **take away**.
 - HMMs are a way to **model sequential data**.
 - They assume **discrete states**.
-- Here we also assume discrete observation, but this could have been Gaussian models.
+- Here we also assume discrete observation, but this could have been continuous (e.g. Gaussian models).
+- Given that the number of paths is exponential in `t`, **dynamic programming** is often employed.
+- The computation of intermediate values makes the computation more effective:
+	- The forward algorithm introduces the **`alpha` values**: the **joint** probability of **observing the first `t` observations** and being in **state `k` at time `t`**.
+	- The backward algorithm introduces the **`beta` values**: the **conditional** probability of **observing the observations from time `t` to the end** given the **state at time `t`**.
+
 
 Three families of problem can be solved when working with HMMs.
-- Each time, distinguish between **one-path** or **all-path** approaches.
+- Each time, remember to make the distinction between **one-path** or **all-path** approaches.
+- In other words if the observation sequence is associated to a **particular hidden states sequence** or not.
+	- Remember that a **state sequence** is often called **"path"**.
 
 ### 1/3 Scoring
 
-> How likely is some observation sequence to be emitted (potentially in association with a state sequence)?
+> How likely is **some observation sequence to be emitted** (potentially in association with a state sequence)?
 
-- One-path Scoring
-	- The single path calculation is the **likelihood** of observing the **given observation sequence** over **ONE particular state sequence** (also called **path**)
-	- It computes the joint probability using the decomposition **P(`obs`, `state`) = P(`obs` | `state`) \* P(`state`)
-	- *??what is the name of this decomposition??*
-- All-path Scoring
-	- It computes given sequence of observations or emissions regardless of the 
-	- It computes the probability of the observation sequence using the marginalization: P(`obs`) = Sum over all `state` of P(`obs`, `state`) where P(`obs`, `state`) can be seen as a one-path score.
-	- The **forward algorithm** calculates the exact sum iteratively by using dynamic programming
-	- It can be computed by summing the last column in the `alpha` table. Or the first column in the `beta` table.
-
-Instead of computing the probability of a **single path** of hidden states emitting the observation sequence (Viterbi), the **forward algorithm** calculates the probability of the **observation sequence being produced by ALL possible paths**.
-- The forward algorithm introduces the **`alpha` values**: the joint probability of **observing the first `t` observations** and being in **state `k` at time `t`**.
-- The backward algorithm introduces the **`beta` values**: the conditional probability of **observing the observations from time `t` to the end** given the **state at time `t`**.
-- Given that the number of paths is exponential in t, **dynamic programming** must be employed to solve this problem.
-- Viterbi and Forward algorithm share the same recursion. But Viterbi algorithm uses the maximum function whereas the forward algorithm uses a sum
+Distinction
+- **One-path Scoring**
+	- The single path calculation is the **likelihood** of observing the **given observation sequence** over **ONE particular state sequence**.
+	- It computes the **joint probability** using the decomposition **P(`obs`, `state`) = P(`obs`|`state`) \* P(`state`)**
+- **All-path Scoring**
+	- It computes the probability of the observation sequence using the following **marginalization**
+		- P(`obs`) = Sum over all `state` of P(`obs`, `state`) where P(`obs`, `state`) can be seen as a **one-path score**.
+		- It can be computed by summing the last column in the `alpha` table. Or the first column in the `beta` table.
+	- For instance, instead of computing the probability of a **single path** of hidden states emitting the observation sequence (Viterbi), the **forward algorithm** calculates the probability of the **observation sequence being produced by ALL possible paths**.
 
 ### 2/3 Decoding
 
-> Given some observed sequence, what path gives us the maximum likelihood of observing this sequence?
+> Given some observed sequence, what **path gives us the maximum likelihood of observing** this sequence?
 
-- **Decoding** looks for a **path** (sequence of states).
-- **Filtering** and **Smoothing** look for most likely state for **ONE single time**.
+**Decoding** looks for a **path** (sequence of states) whereas **Filtering** and **Smoothing** look for the most likely state at **ONE single time-step**.
 
-- One-path Decoding:
-	- **Viterbi decoding algorithm** finds the most probable state path, i.e. **THE hidden state sequence** (a path) that **maximizes the joint probability** of the observation sequence [`obs_t1` ... `obs_tn`] and hidden state sequence [`state_t1` ... `state_tn`], i.e. P([`obs_t1` ... `obs_tn`], [`state_t1` ... `state_tn`]).
+Distinction
+- **One-path Decoding**:
+	- **Viterbi decoding algorithm** finds the **most probable state path**, i.e. **THE hidden state sequence** (a path) that **maximizes the joint probability** of the observation sequence [`obs_t1` ... `obs_tn`] and hidden state sequence [`state_t1` ... `state_tn`]
 	- It is a **dynamic programming** algorithm: the best path can be obtained based on the best path of the previous states.
 	- The `alpha*(i, t)` variable represents the probability of the most likely **path ending at state `i`** at time `t` in the path.
-	- By keeping pointers backwards, the actual hidden state sequence can be found by backtracking.
-	- Viterbi can be used to give a first approximation of the all-path scoring:
-		- But it is just a small fraction of the probability mass of all possible paths.
+	- By **keeping pointers backwards**, the actual hidden state sequence can be found by **backtracking**.
+	- Viterbi can be used to give a **first approximation** of the all-path learning:
+		- But it is just a **small fraction of the probability mass** of all possible paths.
 		- Hence, the approximation is valid only if this particular path has high probability density.
+	- Viterbi and **Forward algorithms** share the **same recursion**.
+		- But Viterbi algorithm uses the **maximum function** whereas the forward algorithm uses a **sum**.
 	
-- All-path Decoding:
+- **All-path Decoding**:
 	- **Posterior Decoding** returns the sequence of hidden states that contains the **most likely states at any time point**.
-		- It uses both the forward and the backward algorithm.
+		- It uses both the **forward and the backward algorithms**.
 
 ### 3/3 Learning
 
-> Given some observation sequence (and potentially the associated state sequence), what are the most likely HMM parameters?
+> Given some observation sequence (and potentially the associated state sequence), what are the **most likely HMM parameters**?
 
 Let's call `θ` the HMM parameters (emission and transition probabilities), and `π` a **path** (i.e. a sequence of hidden states).
 
-- One-path Learning:
+Distinction
+- **One-path Learning**:
 	- In supervised learning, the **counting method** (MLE) looks for `argmax_over_θ` of [P(`x`, `π`|`θ`)], given the annotation true `π` (annotation).
 	- In unsupervised learning, **Viterbi-EM** looks for `argmax_over_θ` of `MAX_over_π` of [P(`x`, `π`|`θ`)].
 	
-- All-path Learning:
+- **All-path Learning**:
 	- In unsupervised learning, **Baum-Welch-EM** looks for `argmax_over_θ` of `SUM_over_π` of [P(`x`, `π`|`θ`)].
 	
 # Acknowledgement and references
