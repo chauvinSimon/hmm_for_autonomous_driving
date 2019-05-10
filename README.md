@@ -252,14 +252,14 @@ Let's now focus on this **Markov chain**, i.e. the **random process** followed b
 What is its **stationary distribution**, i.e. the probability distribution that **remains unchanged** in the Markov chain as time progresses?
 - Let's call the stationary distribution `π` = [p_stat(`left_lane`), p_stat(`right_lane`)].
 - Let's call `T_M` the **transition matrix**.
-	- `π`\*`T_M` gives the distribution resulting from one transition applied on the stationary distribution.
+	- `π`*`T_M` gives the distribution resulting from one transition applied on the stationary distribution.
 - If **convergence** is reached, the distribution `π` is **invariant** by the matrix `T_M`.
-	- `π` = `π`\*`T_M`
+	- `π` = `π`*`T_M`
 - Note that:
 	- (1) All entries in `π` must be **non-negative**.
 	- (2) They should **sum to `1`**. That can be obtained by **normalization**.
 - Transposing:
-	- `π`.T = `T_M`.T \* `π`.T
+	- `π`.T = `T_M`.T * `π`.T
 	- Hence, `π`.T is an **eigenvector of `T_M`.T** with **eigenvalue `1`**.
 	- In other words, the **stationary distribution** is a **left eigenvector** (as opposed to the usual right eigenvectors) of the **transition matrix**.
 - This equation can have **zero**, **one** or **several solutions**.
@@ -385,7 +385,7 @@ The Bayesian concepts introduced for this simple example of **inference** will b
 Had it been a first-order Markov Chain (no hidden state), one could have marginalized over all `speed(t)` observations and simplify the large joint expression using the **conditional independence** offered by the Markov property.
 
 The final expression would have been:
-- p([`speed(1)`, ..., `speed(t)`]) = p(`speed(1)`) \* SUM over `t`( p(`speed(t)` | `speed(t-1)`) )
+- p([`speed(1)`, ..., `speed(t)`]) = p(`speed(1)`) * SUM over `t`( p(`speed(t)` | `speed(t-1)`) )
 
 In the HMM case, we need to add some modifications:
 - We use the **transition model** to navigate between two states.
@@ -490,7 +490,7 @@ Filtering is one important application for robotics and **autonomous driving**.
 
 The form of the `alpha` table turns out to be very appropriate for **filtering**. Here are some of the ideas for the derivation:
 - Let's take the example of p(`lane(t=3)`=`right` | [`low speed`, `high speed`, `low speed`]).
-- Express *conditional probability* using the following *joint probability*: p(`lane(t=3)`=`right`, [`low speed`, `high speed`, `low speed`]) \* p([`low speed`, `high speed`, `low speed`]).
+- Express *conditional probability* using the following *joint probability*: p(`lane(t=3)`=`right`, [`low speed`, `high speed`, `low speed`]) * p([`low speed`, `high speed`, `low speed`]).
 - Note that the **marginal probability of the observation sequence** is at the denominator. We have learnt how to find it from the `alpha` table in [Q3](#q3).
 - Marginalize it over last the hidden state `lane(t=3)`.
 - All remaining terms are **`alpha` values**.
@@ -563,7 +563,7 @@ The `beta` table can actually be used to compute the **marginal probability of a
 
 The probability of being in state `k` at time `j`<`T` is sometimes noted with **`gamma` variable**:
 - `gamma`(`lane_k`(`t=j`) | `[observation sequence (1...T)]`)
-- The following derivation shows that `gamma` is proportional to the product `alpha`\*`beta`.
+- The following derivation shows that `gamma` is proportional to the product `alpha`*`beta`.
 - The `gamma` variable will be re-used in the Baum-Welch Algorithm in [Q6](#q6).
 
 Here are some of the ideas for the derivation:
@@ -843,7 +843,7 @@ This is a **maximization problem**.
 - The goal is to **find the hidden state sequence** [`lane_t=1`, `lane_t=2`, `lane_t=3`] that **maximizes the joint probability** `P`([`lane_t=1`, `lane_t=2`, `lane_t=3`], [`low speed` (`t=1`), `high speed` (`t=2`), `low speed` (`t=3`)]).
 - It can be thought as a **search for the SINGLE most likely path**.
 
-Let's call **`L\*`** the **optimal hidden state sequence**, and let's note `L1` = `lane_t=1`, `L2` = `lane_t=2` and `L3` = `lane_t=3`:
+Let's call **`L*`** the **optimal hidden state sequence**, and let's note `L1` = `lane_t=1`, `L2` = `lane_t=2` and `L3` = `lane_t=3`:
 - `L*` = `argmax_over_L1_L2_L3`(`P`([`L1`, `L2`, `L3`], [`low speed` (`t=1`), `high speed` (`t=2`), `low speed` (`t=3`)])).
 - This **joint probability** can be turned to a **sum of conditional probabilities**.
 - `L*` = `argmax_over_L1_L2_L3`(`term_1` `*` `term_2` `*` `term_3`).
@@ -860,37 +860,37 @@ Let's call **`L\*`** the **optimal hidden state sequence**, and let's note `L1` 
 - Finally **use this result** to solve the **maximization over `L3`**.
 - This is the idea of the **Dynamic Programming** approach.
 
-Similar to the `alpha`, `beta` and `pi` variables, let's **introduce `alpha\*(i, t)`**:
+Similar to the `alpha`, `beta` and `pi` variables, let's **introduce `alpha*(i, t)`**:
 - `alpha*(i, t)` = `P`([`observed speed` (`t=1`), ..., `observed speed` (`t=t`)] **and** [`L1`, ..., `Lt-1`] being optimal **and** `lane_t` `=` `i`).
 	- Think of `alpha*(i, t)` as the **probability of observing the head of length `t` of the observation sequence, having followed the optimal sub-path until `t-1` and being in state `i` after that**.
 	- In other words, `alpha*(i, t)` is the probability of the most likely path through state `state_t` = `i`.
-- It can be noted that **`alpha\*(i, t)` is very similar to `alpha(i, t)`**:
+- It can be noted that **`alpha*(i, t)` is very similar to `alpha(i, t)`**:
 	- It **recursively computes** `alpha*(i, t)` using the **emission model** and the `alpha*(j, t-1)` **weighted by transition probabilities**.
 	- Except that `alpha(i, t)` does not have the term _"and_ [`L1`, ... `Lt-1`] _being_ _optimal"_.
 	- Instead, **`alpha(i, t)` was marginalizing over [`L1`, ... `Lt-1`]**.
-	- In **`alpha\*(i, t)`**, the state sub-sequence is **fixed to the optimal sub-sequence for the time [`1`, `t-1`]**.
+	- In **`alpha*(i, t)`**, the state sub-sequence is **fixed to the optimal sub-sequence for the time [`1`, `t-1`]**.
 - A **recursion rule** can be established:
 	- First note that the term *"[`L1`, ..., `Lt`] being optimal"* can be re-written as *`max_over_j`("[`L1`, ..., `Lt-1`] being optimal **and** `Lt` `=` `j`")*.
-		- And the value that maximizes this quantity is precisely the **optimal value of `L\*[t]`** (i.e. **the `t-th` element in `L\*`**).
+		- And the value that maximizes this quantity is precisely the **optimal value of `L*[t]`** (i.e. **the `t-th` element in `L*`**).
 	- Then decompose the **joint probability** into some **conditional probability**.
 	- Simplify the expression using **conditional independence**.
 	- It yields to:
 		- `alpha*(i, t+1)` = `P`(`speed_t+1` | `Lt+1=i`]) `*` `P`(`Lt+1` | `Lt`]) * `max_over_j`[`alpha*(j, t)`]
 	- This is **very similar to the `alpha` construction**, except that the elements at `t+1` are constructed **using the `max()`** over elements at `t` **instead of summing** all elements at `t`.
-	- **It is important, when solving the `max()`, to store the `argmax()`, i.e. the `lane` that has the highest `alpha\*`**.
+	- **It is important, when solving the `max()`, to store the `argmax()`, i.e. the `lane` that has the highest `alpha*`**.
 		- This information will be used to **derive the best sequence `L*`**.
 - Initialisation:
 	- For `t=1`, there is no `max()` operation.
 	- Hence, `alpha*(i, t=1)` `=` `P`( `speed_t=1` | `L1` `=` `i`]) `*` `P`( `L1` `=` `i`).
-	- In other words, **`alpha\*(i, t=1)` == `alpha(i, t=1)`**.
-- Inference: how to **find the elements** of the **optimal sequence `L\*`**?
-	- Start by applying `argmax()` in the **last column**. It gives the optimal value of `L*[t]` (**last state in `L\*`**).
+	- In other words, **`alpha*(i, t=1)` == `alpha(i, t=1)`**.
+- Inference: how to **find the elements** of the **optimal sequence `L*`**?
+	- Start by applying `argmax()` in the **last column**. It gives the optimal value of `L*[t]` (**last state in `L*`**).
 	- Then, for each timestep `t`, starting by the end, **query the memory** and **find `argmax()` at `t-1`** that has been used to compute this `alpha*`.
 	- This is the reason why it is important to **store the transitions resulting of `max()` operations** when building the `alpha*` table.
 	
-| ![Construction of the `alpha\* table` using Dynamic Programming.](docs/alpha_star_table.PNG "Construction of the `alpha\* table` using Dynamic Programming.")  | 
+| ![Construction of the `alpha* table` using Dynamic Programming.](docs/alpha_star_table.PNG "Construction of the `alpha* table` using Dynamic Programming.")  | 
 |:--:| 
-| *Construction of the `alpha\* table` using Dynamic Programming.* |
+| *Construction of the `alpha* table` using Dynamic Programming.* |
 
 Applying **`max()` in the last column** gives the **joint probability for the most probable state sequence**:
 - `0.0546` = p([`low speed`, `high speed`, `low speed`] **and** [`right lane`, `right lane`, `right lane`])
@@ -898,25 +898,25 @@ Applying **`max()` in the last column** gives the **joint probability for the mo
 
 | ![Use of the `alpha* table` for the **decoding** of an observation sequence.](docs/alpha_star_table_decoding.gif "Use of the `alpha* table` for the **decoding** of an observation sequence.")  | 
 |:--:| 
-| *Use of the `alpha\* table` for the **marginal probability** of an **observation sequence**.* |
+| *Use of the `alpha* table` for the **marginal probability** of an **observation sequence**.* |
 
 Similar to the construction of the `alpha` table (Forward algorithm), the Viterbi decoding algorithm has:
-- Time complexity = **`O`(`S^2`\*`T`)**,
-	- It has reduced from **exponential** (the brute force had: `O`(`2*T`\*`S^T`)) to **polynomial**.
+- Time complexity = **`O`(`S^2`*`T`)**,
+	- It has reduced from **exponential** (the brute force had: `O`(`2*T`*`S^T`)) to **polynomial**.
 	- It is *linear* in the length of the sequence and *quadratic* in the size of the state space.
-- And **`O`(`S`\*`T`) space complexity**, to remember the **pointers**.
+- And **`O`(`S`*`T`) space complexity**, to remember the **pointers**.
 - Where `S` denotes the number of hidden states and `T` the length of the observation sequence.
 
 **Decoding** only requires only two types of information:
 - The `alpha*` values in the **last column**.
 - The **pointers**, i.e. the transitions followed between columns when building the table (to recover the `argmax`).
 
-In other words, **`alpha\*` values in the non-last columns are useless for decoding**:
+In other words, **`alpha*` values in the non-last columns are useless for decoding**:
 - No `argmax()` operation is performed to construct the optimal sequence from the table, except for the last column.
 - It **could be the case** that `alpha*`(`left_lane`, `t=2`) could be larger than `alpha*`(`right_lane`, `t=2`), but still **not part of the optimal path**.
 - But that due to **the transition probabilities**, it is **not chosen with `argmax()`** in the next column.
 	- Remember that the `max()` operation is on the **product `alpha*`*`transition`**. Not just on `alpha*`.
-- Nevertheless, in this case **`alpha\*`(`right_lane`, `t=2`) would still be chosen when building L*\** since it is located on the optimal path.
+- Nevertheless, in this case **`alpha*`(`right_lane`, `t=2`) would still be chosen when building L*** since it is located on the optimal path.
 
 Answer:
 - [`right_lane`, `right_lane`, `right_lane`] is the **most likely `lane` sequence** if the **observation sequence** is [`low speed`, `high speed`, `low speed`].
@@ -934,8 +934,8 @@ Difference between the **Viterbi Algorithm** and **Posterior Decoding**:
 - Why calling it *Posterior* Decoding? We have answered a similar question in [Q2](#q2), but now we are in the context of a sequence.
 	- Without seeing any observation, we have the prior that the vehicle is more likely to be driving on the `right_lane` (p=`2/3`).
 	- Now appears the first observation. We update our prior using this information via Bayes' rule:
-		- p(`right_lane` | `obs_1`) = p(`obs_1` | `right_lane`) \* p(`right_lane`) / p(`obs_1`)
-		- In other words: `Posterior` = normalized(`Prior` \* `Likelihood`)
+		- p(`right_lane` | `obs_1`) = p(`obs_1` | `right_lane`) * p(`right_lane`) / p(`obs_1`)
+		- In other words: `Posterior` = normalized(`Prior` * `Likelihood`)
 		- If `obs_1` is `low_speed`, our **belief** that `state_1` is `right_lane` is **reinforced**.
 		- If `obs_2` is also `low_speed`, information flow backwards from the second observation and **reinforces** our **belief** about `state_1` even more.
 	- This example shows the way information flows **backward** and **forward** to affect our belief about the states in Posterior Decoding.
@@ -1069,7 +1069,7 @@ First, remember concepts defined in the previous sections (`alpha`, `beta`, `gam
 	- SUM over the **last column** in the `alpha` table.
 	- SUM over the **first column** in the `beta` table.
 - Similar to what we did for smoothing, let's introduce **`gamma`(`lane_k`, `time_t`)**.
-	- `gamma`(`lane_k`, `time_t`) = `alpha(k, t)` \* `beta(k, t)` / p(`x`|`θ`).
+	- `gamma`(`lane_k`, `time_t`) = `alpha(k, t)` * `beta(k, t)` / p(`x`|`θ`).
 	- Think of it as the **the probability of having been in state `k` at time `t`**, given the full observation sequence `x` and the model `θ`.
 	- The denominator in `gamma` is get by **summing the last column of the `alpha` table**:
 		- p(`x`|`θ`) = SUM over `k` of `alpha(k, T)`.
@@ -1100,12 +1100,12 @@ Now we can derive update rules for the HMM parameters:
 	- The denominator is: SUM for time `t=1` to time `t=T-1` of `xi`(`lane_k`, `lane_l`, `time_t`).
 - For the **emission matrix**:
 - `new` p(`lane_k` emits `speed_s`) = `E`[# of times in state `k`, when the observation was `s`] / `E`[# of times in state `k`]
-	- The numerator is: SUM for time `t=1` to time `t=T` of `gamma`(`lane_k`, `time_t`) \* 1[`obs_t`==`s`].
+	- The numerator is: SUM for time `t=1` to time `t=T` of `gamma`(`lane_k`, `time_t`) * 1[`obs_t`==`s`].
 	- The denominator is: SUM for time `t=1` to time `t=T` of `gamma`(`lane_k`, `time_t`).
 
 To summarize, working with distributions, an expression can be derived using the `alpha` and `beta` values:
-- p(`state_t+1`=`l`|`state_t`=`k`) = sum over `t` of `alpha(k, t)` \* p(`state_t+1`=`l`|`state_t`=`k`) \* p(`obs_t+1`|`state_t+1`=`l`) \* `beta(l, t+1)` / p(`x`|`θ`)
-- p(`obs_t`=`b`|`state_t`=`k`) = sum over `t` of `alpha(k, t)` \* `beta(k, t)` / p(`x`|`θ`)
+- p(`state_t+1`=`l`|`state_t`=`k`) = sum over `t` of `alpha(k, t)` * p(`state_t+1`=`l`|`state_t`=`k`) * p(`obs_t+1`|`state_t+1`=`l`) * `beta(l, t+1)` / p(`x`|`θ`)
+- p(`obs_t`=`b`|`state_t`=`k`) = sum over `t` of `alpha(k, t)` * `beta(k, t)` / p(`x`|`θ`)
 
 #### EM-Iteration
 The Baum-Welch **iteration loop** repeats the following steps until p([`obs_sequence`]|`HMM_parameters`) converges:
@@ -1115,10 +1115,10 @@ The Baum-Welch **iteration loop** repeats the following steps until p([`obs_sequ
 - **Update the Transition and Emission** models (potentially using pseudo-counts), based on the estimate of the frequency of transition and emission for each pair.
 
 Complexity:
-- The time complexity of the **Forward** and **Backward** algorithms was `O(S\*S\*T)`.
+- The time complexity of the **Forward** and **Backward** algorithms was `O(S*S*T)`.
 - When running them, we have all of the information necessary to **calculate the likelihood** and to **update the emission and transition probabilities** during each iteration.
 - Updates are **constant time operations** once `alpha(k, t)`, `beta(k, t)` and p(`x`|`θ`) have been computed.
-- Hence, the **total time complexity** for this Baum-Welch algorithm is **`O(S\*S\*T\*N)`**, where
+- Hence, the **total time complexity** for this Baum-Welch algorithm is **`O(S*S*T*N)`**, where
 	- `S` is the number of hidden states.
 	- `T` is the length of the observation sequence.
 	- `N` is the total number of iterations.
@@ -1172,7 +1172,7 @@ Three families of problem can be solved when working with HMMs.
 Distinction
 - **One-path Scoring**
 	- The single path calculation is the **likelihood** of observing the **given observation sequence** over **ONE particular state sequence**.
-	- It computes the **joint probability** using the decomposition **p(`obs`, `state`) = p(`obs`|`state`) \* p(`state`)**
+	- It computes the **joint probability** using the decomposition **p(`obs`, `state`) = p(`obs`|`state`) * p(`state`)**
 - **All-path Scoring**
 	- It computes the probability of the observation sequence using the following **marginalization**:
 		- p(`obs`) = SUM over all `state` of p(`obs`, `state`) where p(`obs`, `state`) can be seen as a **one-path score**.
