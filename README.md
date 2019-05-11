@@ -1,4 +1,4 @@
-# hmm_for_autonomous_driving
+# :blue_car: :car: :taxi: HMMs for Autonomous Driving :taxi: :car: :blue_car:
 
 # Introduction
 Disclaimer:
@@ -426,12 +426,13 @@ Let's see now how to efficiently derive it by **building the `alpha` table**.
 		- Decompose the joint probability into a product of conditional probabilities (isolate `observation(t+1)` and `state(t+1)`).
 		- Use **conditional independence** to simplify two terms ([given `state(t)`, `state(t+1)` is independent of all possible `observation`] and [given `state(t+1)`, `observation(t+1)` is independent of all other terms]).
 		- Three terms are left:  [emission at `t+1`], [transition from `t` to `t+1`] and [`alpha`(`i`, `t`)].
-		- `alpha`(`i`, `t+1`) = [emission at `t+1`] * SUM[over `state(t)`] [transition `t`->`t+1` * `alpha`(`i`, `t`)].
+		- `alpha`(`i`, `t+1`) = [emission at `t+1`] * SUM[over `state_j`] [transition `t`->`t+1` * `alpha`(`j`, `t`)].
 	- This recursion can be interpreted as followed:
 		- Each element in the column `t+1` is a **weighted sum** of the elements at `t`.
 		- The *weights* are the **transition probabilities**.
 		- The obtained sum is finally **scaled by the emission probability** (for the state `i` to emit the observation present at `t+1` in our observation sequence).
 - (2) The **table initialisation [`alpha`(`i`, `t=1`)]** is easily computed with the initial state distribution and the emission model.
+	- p(`obs_1`, `lane_1`) = p(`obs_1`|`lane_1`) \* p(`lane_1`)
 - (3) Last but not least, the marginal probability of the observation sequence (what we are really looking for!) can be **obtained just by summing the terms in the last column**:
 	- p(`obs_sequence`) = p(`obs_sequence`, `last_lane`=`right`) + p(`obs_sequence`, `last_lane`=`left`).
 
@@ -562,7 +563,7 @@ The `beta` table can actually be used to compute the **marginal probability of a
 - Note that we can answer the question for `t=3` (cf. **filtering** of [Q4](#q4)).
 
 The probability of being in state `k` at time `j`<`T` is sometimes noted with **`gamma` variable**:
-- `gamma`(`lane_k`(`t=j`) | `[observation sequence (1...T)]`)
+- `gamma`(`k`, `t`) = p(`lane(t)`=`k` | `[observation sequence (1...T)]`) for `t` in [`1` ... `T`]. 
 - The following derivation shows that `gamma` is proportional to the product `alpha`*`beta`.
 - The `gamma` variable will be re-used in the Baum-Welch Algorithm in [Q6](#q6).
 
@@ -612,7 +613,7 @@ Given an observation sequence, distributions over **future hidden states can be 
 - Hence, think of `pi`(`i`, `t`) as the **probability of a state `i`, in `k` future time steps, given the full observation sequence**.
 
 A recursion rule for prediction can be derived:
-- `pi`(`lane i`, `time t+k+1`) = SUM over `state` `j` of [p(`lane(t+k+1)=i` | `lane(t+k)=j`) `*` `pi`(`lane i`, `time k+1`)]
+- `pi`(`lane i`, `time t+k+1`) = SUM over `state` `j` of [p(`lane(t+k+1)=i` | `lane(t+k)=j`) `*` `pi`(`lane i`, `time t+k`)]
 	- For the derivation, insert `lane(t+k)=j` in the definition of `pi`(`lane i`, `time t+k+1`).
 	- Since its realisation is unknown, we marginalize over `lane(t+k)=j`.
 	- Break the joint part [`lane(t+k+1)=i` and `lane(t+k)=j`] in a conditional.
@@ -1142,15 +1143,16 @@ Convergence and overfitting.
  
 ## Jupyter Notebook
 
-The [notebook](hmm_for_autonomous_driving.ipynb) implements the solution to the different questions.
+The [notebook](hmm_for_autonomous_driving.ipynb) implements the presented solutions to the different questions.
 
-I am using the [hmmlearn](https://hmmlearn.readthedocs.io/en/latest/index.html#) package.
+I am using the [hmmlearn](https://hmmlearn.readthedocs.io/en/latest/index.html#) python package.
 - To install it on **Windows**, you may want to get an already [compiled version](https://www.lfd.uci.edu/~gohlke/pythonlibs/#hmmlearn).
 
 ## Summary
 
 Here are some of the **key concepts** to **take away**.
 - HMMs are a way to **model sequential data**.
+- HMMs are **"stochastic" "generative" models**: see the [attached note](why_stochastic_generative_models.md) for reflexions on this topic.
 - They assume **discrete states**. **Markov Chain** models are used to describe the `state` process.
 - Here we also assume discrete observation, but this could have been continuous (e.g. using Gaussian models).
 - Given that the number of paths is exponential in `T`, **dynamic programming** is often employed.
