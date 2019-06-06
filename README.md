@@ -39,7 +39,7 @@ Similarly, if you get informed of a `high speed`, you could say that I am **more
 
 We get here a **first intuition**:
 - The variable `lane` seems to have an impact on the variable `speed`.
-- In  other words: **you do not drive at the same pace depending if you are one `left lane` or `right lane`**.
+- In  other words: **you do not drive at the same pace depending if you are on `left lane` or `right lane`**.
 - But the relation is **not deterministic**. It is **stochastic**.
 
 This **causality finding** will be modelled using **`emission probabilities`** in the following.
@@ -810,7 +810,7 @@ def fibo_vanilla_recursive(i):
 %timeit for _ in range(10): fibo_vanilla_recursive(10)
 ```
 
-```237 µs ± 14.3 µs per loop (mean ± std. dev. of 7 runs, 1000 loops each)```
+```533 µs ± 49 µs per loop (mean ± std. dev. of 7 runs, 1000 loops each)```
 
 The second recursive approach reuses previous results in the computation, i.e. a **"cached recursion"**:
 
@@ -827,9 +827,28 @@ def fibo_cached_recursive(i):
 %timeit for _ in range(10): fibo_cached_recursive(10)
 ```
 
-```2.33 µs ± 140 ns per loop (mean ± std. dev. of 7 runs, 100000 loops each)```
+```4.89 µs ± 180 ns per loop (mean ± std. dev. of 7 runs, 100000 loops each)```
 
-The **difference** in the **computational time** is substantial (all the more since it only goes to fibonacci[`10`]).
+One could have also turned the vanilla version into a **cached version** just by **decorating** it with [`@lru_cache`](https://docs.python.org/3/library/functools.html#functools.lru_cache):
+
+```python
+from functools import lru_cache
+
+@lru_cache(maxsize=128)
+def fibo_vanilla_recursive(i):
+    if i <= 0:
+        return 0
+    elif i == 1:
+        return 1
+    else:
+        return fibo_vanilla_recursive(i-1) + fibo_vanilla_recursive(i-2)
+
+%timeit for _ in range(10): fibo_vanilla_recursive(10)
+```
+
+```2.91 µs ± 20.2 ns per loop (mean ± std. dev. of 7 runs, 100000 loops each)```
+
+The **difference** in the **computational time** is substantial (all the more since it only goes up to fibonacci[`10`]).
 
 Let's count how many times each `fibo_vanilla_recursive(i)` is called when computing all `fibo_vanilla_recursive(k)` for `k` in `range(10)`.
 
